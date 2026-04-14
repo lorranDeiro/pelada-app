@@ -76,33 +76,3 @@ export function showErrorNotification(title: string, description?: string) {
   });
 }
 
-/**
- * Send notification to user (for future in-app notification system)
- */
-export async function sendInAppNotification(
-  userId: string,
-  title: string,
-  message: string,
-  type: 'info' | 'warning' | 'success' | 'error' = 'info'
-) {
-  try {
-    // This will be implemented when we add user notifications table
-    const response = await fetch('/api/notifications/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId,
-        title,
-        message,
-        type,
-      }),
-    });
-
-    return response.ok;
-  } catch (error) {
-    console.error('Erro ao enviar notificação in-app:', error);
-    return false;
-  }
-}

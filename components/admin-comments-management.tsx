@@ -53,10 +53,10 @@ export function AdminCommentsManagement() {
           `
           *,
           matches:match_id (
-            date,
+            played_at,
             status,
-            team_a_score,
-            team_b_score
+            score_a,
+            score_b
           )
         `
         )
@@ -66,7 +66,7 @@ export function AdminCommentsManagement() {
 
       const processed = data?.map((comment) => ({
         ...comment,
-        match_date: comment.matches?.date,
+        match_date: comment.matches?.played_at,
         match_status: comment.matches?.status,
       })) || [];
 

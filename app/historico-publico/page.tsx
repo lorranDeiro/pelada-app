@@ -21,6 +21,7 @@ interface MatchWithDetails extends Match {
 export default function PublicHistoryPage() {
   const [matches, setMatches] = useState<MatchWithDetails[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<MatchWithDetails[]>([]);
+  const [teamByMatch, setTeamByMatch] = useState<Map<string, Map<string, 1 | 2>>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
   const [refreshComments, setRefreshComments] = useState(0);
@@ -36,11 +37,9 @@ export default function PublicHistoryPage() {
     const loadData = async () => {
       setIsLoading(true);
 
-      // Load players for filter
       const playersData = await getPlayersForFilter();
       setPlayers(playersData);
 
-      // Buscar temporada ativa
       const { data: seasonData } = await supabase
         .from('seasons')
         .select('*')
@@ -52,7 +51,6 @@ export default function PublicHistoryPage() {
         return;
       }
 
-      // Buscar partidas finalizadas da temporada
       const { data: matchesData } = await supabase
         .from('matches')
         .select('*')
@@ -60,26 +58,41 @@ export default function PublicHistoryPage() {
         .eq('status', 'FINISHED')
         .order('played_at', { ascending: false });
 
-      if (matchesData) {
-        // Buscar MVP de cada partida
-        const matchesWithMvp = await Promise.all(
-          matchesData.map(async (match) => {
-            if (match.mvp_player_id) {
-              const { data: mvpData } = await supabase
-                .from('players')
-                .select('*')
-                .eq('id', match.mvp_player_id)
-                .single();
-              return { ...match, mvp: mvpData };
-            }
-            return { ...match, mvp: null };
-          })
-        );
-
-        setMatches(matchesWithMvp);
-        setFilteredMatches(matchesWithMvp);
+      if (!matchesData || matchesData.length === 0) {
+        setIsLoading(false);
+        return;
       }
 
+      const matchIds = matchesData.map((m) => m.id);
+      const mvpIds = matchesData.map((m) => m.mvp_player_id).filter(Boolean) as string[];
+
+      const [mvpRes, attendanceRes] = await Promise.all([
+        mvpIds.length
+          ? supabase.from('players').select('*').in('id', mvpIds)
+          : Promise.resolve({ data: [] as Player[] }),
+        supabase
+          .from('match_attendances')
+          .select('match_id, player_id, team')
+          .in('match_id', matchIds),
+      ]);
+
+      const mvpById = new Map((mvpRes.data ?? []).map((p) => [p.id, p as Player]));
+      const matchesWithMvp: MatchWithDetails[] = matchesData.map((m) => ({
+        ...m,
+        mvp: m.mvp_player_id ? mvpById.get(m.mvp_player_id) ?? null : null,
+      }));
+
+      const rosterByMatch = new Map<string, Map<string, 1 | 2>>();
+      (attendanceRes.data ?? []).forEach((a) => {
+        if (!rosterByMatch.has(a.match_id)) {
+          rosterByMatch.set(a.match_id, new Map());
+        }
+        rosterByMatch.get(a.match_id)!.set(a.player_id, a.team as 1 | 2);
+      });
+
+      setMatches(matchesWithMvp);
+      setFilteredMatches(matchesWithMvp);
+      setTeamByMatch(rosterByMatch);
       setIsLoading(false);
     };
 
@@ -89,30 +102,28 @@ export default function PublicHistoryPage() {
   const handleFilterChange = (newFilters: HistoryFilters) => {
     setFilters(newFilters);
 
-    // Apply filters
     let filtered = matches;
 
-    // Date range filter
     if (newFilters.startDate) {
       const startDate = new Date(`${newFilters.startDate}T00:00:00`);
-      filtered = filtered.filter((match) => new Date(match.played_at) >= startDate);
+      filtered = filtered.filter((m) => new Date(m.played_at) >= startDate);
     }
 
     if (newFilters.endDate) {
       const endDate = new Date(`${newFilters.endDate}T23:59:59`);
-      filtered = filtered.filter((match) => new Date(match.played_at) <= endDate);
+      filtered = filtered.filter((m) => new Date(m.played_at) <= endDate);
     }
 
-    // Team filter (simplified - would need match attendances for exact filtering)
-    if (newFilters.team !== 'all') {
-      // TODO: Implement team filtering with match_attendances
-      // For now, teams are 'Brancos' and 'Coloridos' per match
-    }
-
-    // Player filter (simplified)
     if (newFilters.playerId) {
-      // TODO: Implement player filtering with match_attendances
-      // This would require loading attendances for each match
+      const pid = newFilters.playerId;
+      filtered = filtered.filter((m) => teamByMatch.get(m.id)?.has(pid));
+
+      if (newFilters.team !== 'all') {
+        const targetTeam: 1 | 2 = newFilters.team === 'brancos' ? 1 : 2;
+        filtered = filtered.filter(
+          (m) => teamByMatch.get(m.id)?.get(pid) === targetTeam
+        );
+      }
     }
 
     setFilteredMatches(filtered);

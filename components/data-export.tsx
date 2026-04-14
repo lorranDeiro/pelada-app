@@ -154,14 +154,31 @@ export function DataExport({ exportType = 'both', data }: DataExportProps) {
   );
 }
 
-/**
- * Generate HTML content for PDF export (matches)
- */
-function generateMatchesHTML(matches: any[]) {
-  const html = `
+interface ExportMatch {
+  id: string;
+  played_at: string;
+  date_label: string;
+  team_a_name: string;
+  team_b_name: string;
+  score_a: number;
+  score_b: number;
+  status: string;
+  notes: string;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function generateMatchesHTML(matches: ExportMatch[]) {
+  return `
     <h1>Histórico de Partidas</h1>
     <p>Exportado em: ${new Date().toLocaleString('pt-BR')}</p>
-    
+
     <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
       <thead>
         <tr style="background-color: #f0f0f0;">
@@ -169,21 +186,19 @@ function generateMatchesHTML(matches: any[]) {
           <th style="border: 1px solid #ddd; padding: 8px;">Time A</th>
           <th style="border: 1px solid #ddd; padding: 8px;">Placar</th>
           <th style="border: 1px solid #ddd; padding: 8px;">Time B</th>
-          <th style="border: 1px solid #ddd; padding: 8px;">Duração</th>
-          <th style="border: 1px solid #ddd; padding: 8px;">Status</th>
+          <th style="border: 1px solid #ddd; padding: 8px;">Notas</th>
         </tr>
       </thead>
       <tbody>
         ${matches
           .map(
-            (match) => `
+            (m) => `
           <tr>
-            <td style="border: 1px solid #ddd; padding: 8px;">${new Date(match.date).toLocaleDateString('pt-BR')}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Brancos</td>
-            <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">${match.team_a_score} x ${match.team_b_score}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Coloridos</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">${match.duration_minutes || '-'} min</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">${match.status === 'FINISHED' ? 'Finalizada' : 'Em Progresso'}</td>
+            <td style="border: 1px solid #ddd; padding: 8px;">${escapeHtml(m.date_label)}</td>
+            <td style="border: 1px solid #ddd; padding: 8px;">${escapeHtml(m.team_a_name)}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">${m.score_a} x ${m.score_b}</td>
+            <td style="border: 1px solid #ddd; padding: 8px;">${escapeHtml(m.team_b_name)}</td>
+            <td style="border: 1px solid #ddd; padding: 8px;">${escapeHtml(m.notes)}</td>
           </tr>
         `
           )
@@ -191,6 +206,4 @@ function generateMatchesHTML(matches: any[]) {
       </tbody>
     </table>
   `;
-
-  return html;
 }
