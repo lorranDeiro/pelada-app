@@ -2,7 +2,8 @@
 
 ## ✅ Features Implementadas
 
-### 1. **Dashboard Admin de Comentários** 
+### 1. **Dashboard Admin de Comentários**
+
 **Endpoint:** `https://seu-dominio.com/admin/comentarios`
 
 - ✅ Página protegida (requer autenticação)
@@ -14,6 +15,7 @@
 - ✅ Cards com autor, conteúdo, timestamp, email
 
 **Arquivos criados:**
+
 - `components/admin-comments-management.tsx` - Componente principal do dashboard
 - `app/admin/comentarios/page.tsx` - Página com autenticação
 - `schema-comments-admin-rls.sql` - Políticas RLS para admin
@@ -23,11 +25,13 @@
 ### 2. **Notificações**
 
 #### Email Notifications
+
 - ✅ Endpoint `/api/notify-admin` (POST)
 - ✅ Chamado automaticamente quando novo comentário é criado
 - ✅ Pronto para integração com: **Resend**, **SendGrid**, **AWS SES**
 
 **Como ativar email:**
+
 1. Instale um serviço de email (ex: Resend)
    ```bash
    npm install resend
@@ -40,6 +44,8 @@
 3. Descomente o código em `/api/notify-admin/route.ts`
 
 #### Toast in-app Notifications
+
+
 - ✅ Implementado com Sonner (já configurado)
 - ✅ Notificações ao criar/aprovar/deletar comentários
 - ✅ Posição top-center com ícones e estilos
@@ -53,12 +59,14 @@
 **Página:** `/historico-publico`
 
 **Filtros disponíveis:**
+
 - 🔍 **Por Jogador** - Dropdown com lista de jogadores
 - ⚽ **Por Time** - Brancos / Coloridos
 - 📅 **Por Período** - Data inicial e final
 - 🏷️ **Contador de filtros ativos**
 
 **Features:**
+
 - ✅ Collapse/expand de filtros
 - ✅ Botão "Limpar" para resetar
 - ✅ Contador dinâmico de partidas mostradas
@@ -71,6 +79,7 @@
 ### 4. **Data Export**
 
 #### CSV Export (Ranking)
+
 - ✅ Botão "CSV Ranking" em `/ranking`
 - ✅ Exporta ranking completo com colunas:
   - Posição, Jogador, Partidas, Pontos, Rating Médio
@@ -78,11 +87,13 @@
   - Vitórias, Empates, Derrotas, MVP
 
 #### PDF Export (Partidas)
+
 - ✅ Botão "PDF Partidas" em `/historico-publico`
 - ✅ Gera tabela com dados de todas as partidas
 - ✅ Abre diálogo de impressão/salvar como PDF
 
 **Endpoints:**
+
 - `GET /api/export/ranking-csv` - Retorna dados para CSV
 - `GET /api/export/matches-pdf` - Retorna dados para PDF
 
@@ -93,6 +104,7 @@
 ## 📋 Próximos Passos (Recomendado)
 
 ### 1. Setup de Email (Prioritário)
+
 ```bash
 # Instalar Resend (recomendado)
 npm install resend
@@ -102,13 +114,16 @@ npm install @sendgrid/mail
 ```
 
 Adicionar env vars ao `.env.local`:
+
 ```
 RESEND_API_KEY=re_xxxxx
 ADMIN_EMAIL=seu-email@gmail.com
 ```
 
 ### 2. Configurar Admin Access Control
+
 Edite sua rota de autenticação para marcar admins:
+
 ```typescript
 // Ao criar/atualizar user
 user_metadata: { 
@@ -117,11 +132,14 @@ user_metadata: {
 ```
 
 ### 3. Executar SQL no Supabase
+
 Se ainda não executou, rode em `Supabase Dashboard > SQL Editor`:
+
 1. `schema-comments.sql` (se não executou antes)
 2. `schema-comments-admin-rls.sql` (para políticas de admin)
 
 ### 4. Testar Features
+
 - ✅ Criar comentário em `/historico-publico`
 - ✅ Ver em `/admin/comentarios` como pendente
 - ✅ Aprovar/deletar comentário
@@ -133,7 +151,8 @@ Se ainda não executou, rode em `Supabase Dashboard > SQL Editor`:
 ## 🔒 Autenticação & RLS
 
 ### Admin Access
-- Página `/admin/comentarios` usa `<RequireAuth>` 
+
+- Página `/admin/comentarios` usa `<RequireAuth>`
 - Requer usuário autenticado no Supabase
 - Para restringir a ADMIN ONLY:
   - Option 1: Use `is_admin` em `user_metadata`
@@ -141,6 +160,7 @@ Se ainda não executou, rode em `Supabase Dashboard > SQL Editor`:
   - Veja comentários em `schema-comments-admin-rls.sql`
 
 ### Comentários (RLS)
+
 - **Públicos** (anon): Veem só comentários APROVADOS
 - **Autenticados**: Veem TODOS os comentários
 - **Admin**: Pode CRUD qualquer comentário
@@ -150,6 +170,7 @@ Se ainda não executou, rode em `Supabase Dashboard > SQL Editor`:
 ## 📊 Arquivos Criados/Modificados
 
 ### Nuevos Componentes
+
 ```
 components/
   ├─ admin-comments-management.tsx    (NEW) Dashboard admin
@@ -159,6 +180,7 @@ components/
 ```
 
 ### Nuevas Páginas
+
 ```
 app/
   ├─ admin/comentarios/page.tsx       (NEW) Dashboard
@@ -170,6 +192,7 @@ app/
 ```
 
 ### Nuevas Funções
+
 ```
 lib/
   ├─ notifications.ts                 (NEW) Sistema de notificações
@@ -178,6 +201,7 @@ lib/
 ```
 
 ### SQL
+
 ```
 schema-comments-admin-rls.sql         (NEW) Políticas RLS admin
 ```
@@ -199,6 +223,7 @@ git push
 ```
 
 **Verificação pós-deploy:**
+
 - ✅ Página `/admin/comentarios` carrega
 - ✅ Filtros funcionam em `/historico-publico`
 - ✅ Botões de export aparecem
@@ -209,15 +234,18 @@ git push
 ## 💡 Dicas & Troubleshooting
 
 ### Comentários não aparecem em admin?
+
 - Verif Rique se executou `schema-comments.sql` no Supabase
 - Verifique RLS policies em Supabase > Authentication > Policies
 
 ### Email não sendo enviado?
+
 - Implemente Resend/SendGrid em `/api/notify-admin`
 - Verifique env vars estão carregadas
 - Veja logs no build: `npm run dev`
 
 ### Filtros não funcionam?
+
 - Date filters já funcionam
 - Player/Team filters requerem join com `match_attendances` (TODO)
 - Filtros parciais estão ativos (date-only by default)
@@ -226,14 +254,13 @@ git push
 
 ## 📞 Resumo das Features
 
-| Feature | Status | Endpoint | Arquivo |
-|---------|--------|----------|---------|
-| Admin Dashboard | ✅ | `/admin/comentarios` | `admin-comments-management.tsx` |
-| Email Notifications | ✅ Pronto | `/api/notify-admin` | `notify-admin/route.ts` |
-| Toast Notifications | ✅ | - | `notifications.ts` |
-| Filtros Histórico | ✅ | `/historico-publico` | `history-filters.tsx` |
-| CSV Export | ✅ | `/api/export/ranking-csv` | `ranking-csv/route.ts` |
-| PDF Export | ✅ | `/api/export/matches-pdf` | `matches-pdf/route.ts` |
+| Feature             | Status    | Endpoint                    | Arquivo                           |
+| ------------------- | --------- | --------------------------- | --------------------------------- |
+| Admin Dashboard     | ✅        | `/admin/comentarios`      | `admin-comments-management.tsx` |
+| Email Notifications | ✅ Pronto | `/api/notify-admin`       | `notify-admin/route.ts`         |
+| Toast Notifications | ✅        | -                           | `notifications.ts`              |
+| Filtros Histórico  | ✅        | `/historico-publico`      | `history-filters.tsx`           |
+| CSV Export          | ✅        | `/api/export/ranking-csv` | `ranking-csv/route.ts`          |
+| PDF Export          | ✅        | `/api/export/matches-pdf` | `matches-pdf/route.ts`          |
 
 **Todos os 4 grupos de features foram implementados e compilou com sucesso! 🎉**
-
