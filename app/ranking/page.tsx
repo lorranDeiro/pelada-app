@@ -6,6 +6,7 @@ import type { SeasonStats } from '@/lib/types';
 import { Trophy, Zap, Target } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DataExport } from '@/components/data-export';
 
 export default function PublicRankingPage() {
   const [stats, setStats] = useState<SeasonStats[]>([]);
@@ -59,9 +60,12 @@ export default function PublicRankingPage() {
       {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-8 shadow-lg">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <Trophy className="h-8 w-8" />
-            <h1 className="text-3xl font-bold">Ranking de Jogadores</h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Trophy className="h-8 w-8" />
+              <h1 className="text-3xl font-bold">Ranking de Jogadores</h1>
+            </div>
+            <DataExport exportType="ranking" />
           </div>
           <p className="text-green-100">Temporada {seasonName || 'Atual'}</p>
         </div>

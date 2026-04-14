@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Match, Player, SeasonStats } from '@/lib/types';
+import type { Match, Player } from '@/lib/types';
 import { Calendar, Trophy, Users } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { CommentForm } from '@/components/comment-form';
 import { CommentsList } from '@/components/comments-list';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { HistoryFiltersComponent, type HistoryFilters } from '@/components/history-filters';
+import { getPlayersForFilter } from '@/lib/matches';
+import { DataExport } from '@/components/data-export';
 
 interface MatchWithDetails extends Match {
   mvp?: Player | null;
@@ -17,13 +20,25 @@ interface MatchWithDetails extends Match {
 
 export default function PublicHistoryPage() {
   const [matches, setMatches] = useState<MatchWithDetails[]>([]);
+  const [filteredMatches, setFilteredMatches] = useState<MatchWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
   const [refreshComments, setRefreshComments] = useState(0);
+  const [players, setPlayers] = useState<Array<{ id: string; name: string }>>([]);
+  const [filters, setFilters] = useState<HistoryFilters>({
+    playerId: null,
+    team: 'all',
+    startDate: '',
+    endDate: '',
+  });
 
   useEffect(() => {
-    const loadMatches = async () => {
+    const loadData = async () => {
       setIsLoading(true);
+
+      // Load players for filter
+      const playersData = await getPlayersForFilter();
+      setPlayers(playersData);
 
       // Buscar temporada ativa
       const { data: seasonData } = await supabase
@@ -62,13 +77,46 @@ export default function PublicHistoryPage() {
         );
 
         setMatches(matchesWithMvp);
+        setFilteredMatches(matchesWithMvp);
       }
 
       setIsLoading(false);
     };
 
-    loadMatches();
+    loadData();
   }, []);
+
+  const handleFilterChange = (newFilters: HistoryFilters) => {
+    setFilters(newFilters);
+
+    // Apply filters
+    let filtered = matches;
+
+    // Date range filter
+    if (newFilters.startDate) {
+      const startDate = new Date(`${newFilters.startDate}T00:00:00`);
+      filtered = filtered.filter((match) => new Date(match.played_at) >= startDate);
+    }
+
+    if (newFilters.endDate) {
+      const endDate = new Date(`${newFilters.endDate}T23:59:59`);
+      filtered = filtered.filter((match) => new Date(match.played_at) <= endDate);
+    }
+
+    // Team filter (simplified - would need match attendances for exact filtering)
+    if (newFilters.team !== 'all') {
+      // TODO: Implement team filtering with match_attendances
+      // For now, teams are 'Brancos' and 'Coloridos' per match
+    }
+
+    // Player filter (simplified)
+    if (newFilters.playerId) {
+      // TODO: Implement player filtering with match_attendances
+      // This would require loading attendances for each match
+    }
+
+    setFilteredMatches(filtered);
+  };
 
   if (isLoading) {
     return (
@@ -88,42 +136,62 @@ export default function PublicHistoryPage() {
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-8 shadow-lg">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <Calendar className="h-8 w-8" />
-            <h1 className="text-3xl font-bold">Histórico de Partidas</h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Calendar className="h-8 w-8" />
+              <h1 className="text-3xl font-bold">Histórico de Partidas</h1>
+            </div>
+            <DataExport exportType="both" />
           </div>
-          <p className="text-blue-100">Veja os resultados e deixe seus comentários</p>
+          <p className="text-blue-100">Veja os resultados, deixe comentários e exporte dados</p>
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {matches.length === 0 ? (
+        {/* Filters */}
+        {matches.length > 0 && (
+          <HistoryFiltersComponent 
+            players={players}
+            onFilterChange={handleFilterChange}
+          />
+        )}
+
+        {/* Matches */}
+        {filteredMatches.length === 0 ? (
           <Card className="p-8 text-center bg-gray-800 border-gray-700">
-            <p className="text-gray-400">Nenhuma partida registrada ainda.</p>
+            <p className="text-gray-400">
+              {matches.length === 0
+                ? 'Nenhuma partida registrada ainda.'
+                : 'Nenhuma partida encontrada com os filtros aplicados.'}
+            </p>
           </Card>
         ) : (
           <div className="space-y-6">
-            {matches.map((match) => {
+            <p className="text-sm text-gray-400">
+              Mostrando <strong>{filteredMatches.length}</strong> de{' '}
+              <strong>{matches.length}</strong> partida
+              {matches.length !== 1 ? 's' : ''}
+            </p>
+
+            {filteredMatches.map((match) => {
               const isExpanded = selectedMatch === match.id;
 
               const winnerTeam =
                 match.score_a > match.score_b
-                  ? {name: match.team_a_name, score: match.score_a}
-                  : {name: match.team_b_name, score: match.score_b};
-              
-              const loserTeam = 
+                  ? { name: match.team_a_name, score: match.score_a }
+                  : { name: match.team_b_name, score: match.score_b };
+
+              const loserTeam =
                 match.score_a < match.score_b
-                  ? {name: match.team_a_name, score: match.score_a}
-                  : {name: match.team_b_name, score: match.score_b};
+                  ? { name: match.team_a_name, score: match.score_a }
+                  : { name: match.team_b_name, score: match.score_b };
 
               return (
                 <Card
                   key={match.id}
                   className="bg-gradient-to-r from-gray-800 to-gray-700 border-gray-600 overflow-hidden cursor-pointer hover:border-green-500 transition"
-                  onClick={() =>
-                    setSelectedMatch(isExpanded ? null : match.id)
-                  }
+                  onClick={() => setSelectedMatch(isExpanded ? null : match.id)}
                 >
                   {/* Match Header - Click to expand */}
                   <div className="p-4 space-y-3">
@@ -133,11 +201,13 @@ export default function PublicHistoryPage() {
                           locale: ptBR,
                         })}
                       </div>
-                      <div className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                        match.score_a === match.score_b
-                          ? 'bg-gray-600 text-gray-200'
-                          : 'bg-green-600 text-white'
-                      }`}>
+                      <div
+                        className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                          match.score_a === match.score_b
+                            ? 'bg-gray-600 text-gray-200'
+                            : 'bg-green-600 text-white'
+                        }`}
+                      >
                         {match.score_a === match.score_b ? 'Empate' : 'Finalizado'}
                       </div>
                     </div>
@@ -215,11 +285,10 @@ export default function PublicHistoryPage() {
         )}
 
         {/* Footer Info */}
-        <div className="mt-8 p-4 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-400">
+        <div className="mt-8 p-4 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-400 space-y-2">
           <p>💬 Clique em uma partida para ver mais detalhes e deixar comentários.</p>
-          <p className="mt-2">
-            Os comentários são verificados antes de aparecer para manter a qualidade.
-          </p>
+          <p>Os comentários são verificados antes de aparecer para manter a qualidade.</p>
+          <p>📊 Use os filtros acima para buscar partidas específicas ou exporte todos os dados.</p>
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send } from 'lucide-react';
 import { createMatchComment } from '@/lib/comments';
+import { notifyAdminNewComment } from '@/lib/notifications';
 import { toast } from 'sonner';
 
 interface CommentFormProps {
@@ -54,6 +55,12 @@ export function CommentForm({ matchId, onCommentAdded }: CommentFormProps) {
 
     if (result) {
       toast.success('Comentário enviado! Aguardando aprovação...');
+      
+      // Send notification to admin (async, non-blocking)
+      notifyAdminNewComment(result).catch(error => {
+        console.error('Erro ao enviar notificação:', error);
+      });
+      
       setAuthorName('');
       setContent('');
       setAuthorEmail('');
