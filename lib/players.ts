@@ -1,0 +1,48 @@
+import { supabase } from './supabase';
+import type { Player, RankedPlayer } from './types';
+
+export async function fetchActivePlayers(): Promise<Player[]> {
+  const { data, error } = await supabase
+    .from('players')
+    .select('*')
+    .eq('active', true)
+    .order('name');
+  if (error) throw error;
+  return (data ?? []) as Player[];
+}
+
+export async function fetchRankedPlayers(
+  seasonId: string,
+  playerIds: string[]
+): Promise<RankedPlayer[]> {
+  if (playerIds.length === 0) return [];
+
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('*')
+    .in('id', playerIds);
+  if (playersError) throw playersError;
+
+  const { data: stats, error: statsError } = await supabase
+    .from('v_player_season_stats')
+    .select('player_id, total_points, matches_played')
+    .eq('season_id', seasonId)
+    .in('player_id', playerIds);
+  if (statsError) throw statsError;
+
+  const statsByPlayer = new Map(
+    (stats ?? []).map((s) => [
+      s.player_id as string,
+      {
+        season_points: Number(s.total_points ?? 0),
+        matches_played_season: Number(s.matches_played ?? 0),
+      },
+    ])
+  );
+
+  return (players as Player[]).map((p) => ({
+    ...p,
+    season_points: statsByPlayer.get(p.id)?.season_points ?? 0,
+    matches_played_season: statsByPlayer.get(p.id)?.matches_played_season ?? 0,
+  }));
+}
