@@ -113,3 +113,14 @@ export interface RankedPlayer extends Player {
   season_points: number;
   matches_played_season: number;
 }
+
+export interface MatchComment {
+  id: string;
+  match_id: string;
+  author_name: string;
+  author_email: string | null;
+  content: string;
+  is_verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
