@@ -21,6 +21,7 @@ export default function HistoricoPage() {
 
 function HistoricoContent() {
   const [matches, setMatches] = useState<Match[] | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -37,13 +38,50 @@ function HistoricoContent() {
     })();
   }, []);
 
+  const handleClearHistory = async () => {
+    if (!confirm(`Tem certeza que quer deletar ${matches?.length || 0} partidas? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      const { error } = await supabase
+        .from('matches')
+        .delete()
+        .neq('id', '');
+      
+      if (error) {
+        toast.error('Erro ao limpar histórico', { description: error.message });
+        return;
+      }
+
+      setMatches([]);
+      toast.success('Histórico limpo com sucesso');
+    } catch (err) {
+      toast.error('Erro ao limpar histórico');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   if (!matches) {
     return <main className="p-4 text-sm text-muted-foreground">Carregando…</main>;
   }
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 space-y-4 p-4">
-      <h1 className="text-2xl font-semibold">Histórico</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Histórico</h1>
+        {matches.length > 0 && (
+          <button
+            onClick={handleClearHistory}
+            disabled={isClearing}
+            className="px-3 py-1.5 text-sm font-medium text-red-500 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isClearing ? 'Limpando...' : 'Limpar'}
+          </button>
+        )}
+      </div>
 
       {matches.length === 0 ? (
         <Card>
