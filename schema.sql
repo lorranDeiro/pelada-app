@@ -29,11 +29,13 @@ create table players (
   name        text not null,
   position    player_position not null default 'JOGADOR',
   skill_level int  not null check (skill_level between 1 and 5),
+  is_admin    boolean not null default false,
   active      boolean not null default true,
   created_at  timestamptz not null default now()
 );
 
 create index idx_players_active on players(active) where active;
+create index idx_players_admin on players(is_admin) where is_admin;
 
 -- ---------- seasons ----------
 create table seasons (
@@ -137,6 +139,15 @@ create index idx_pmr_match on player_match_results(match_id);
 
 -- ---------- View: ranking da temporada ----------
 create or replace view v_player_season_stats as
+with season_league_avg as (
+  -- Calcula a média de pontos por partida para cada temporada
+  select
+    m.season_id,
+    avg(pmr.total_points)::numeric as league_avg_points
+  from player_match_results pmr
+  join matches m on m.id = pmr.match_id
+  group by m.season_id
+)
 select
   p.id                      as player_id,
   p.name,
@@ -151,12 +162,44 @@ select
   count(*) filter (where pmr.outcome = 'WIN')  as wins,
   count(*) filter (where pmr.outcome = 'DRAW') as draws,
   count(*) filter (where pmr.outcome = 'LOSS') as losses,
-  count(*) filter (where m.mvp_player_id = p.id) as mvp_count
+  count(*) filter (where m.mvp_player_id = p.id) as mvp_count,
+  -- Dynamic rating calculation (1.0–5.0 scale)
+  (case
+     when count(distinct pmr.match_id) = 0 then 3.0::numeric
+     else greatest(
+       1.0::numeric,
+       least(
+         5.0::numeric,
+         (
+           3.0::numeric
+           + ((coalesce(avg(pmr.total_points), 0) - coalesce(league_avg.league_avg_points, 0)) * 0.15::numeric)
+           + least((count(distinct pmr.match_id)::numeric / 10), 0.5::numeric)
+           + least((count(*) filter (where m.mvp_player_id = p.id)::numeric * 0.15::numeric), 0.5::numeric)
+         )
+       )
+     )
+   end)::numeric(3,1) as dynamic_rating
 from players p
 left join player_match_results pmr on pmr.player_id = p.id
 left join matches m                 on m.id = pmr.match_id
+left join season_league_avg         on season_league_avg.season_id = m.season_id
 where p.active
-group by p.id, p.name, p.position, m.season_id;
+group by p.id, p.name, p.position, m.season_id, season_league_avg.league_avg_points;
+
+-- ---------- match_edit_log ----------
+-- Audit trail para mudanças em partidas finalizadas
+create table match_edit_log (
+  id              uuid primary key default uuid_generate_v4(),
+  match_id        uuid not null references matches(id) on delete cascade,
+  admin_id        uuid,  -- user_id do admin que editou
+  action          text not null,  -- 'score_changed', 'mvp_changed', 'event_added', 'event_removed'
+  payload_before  jsonb,
+  payload_after   jsonb,
+  created_at      timestamptz not null default now()
+);
+
+create index idx_edit_log_match on match_edit_log(match_id);
+create index idx_edit_log_admin on match_edit_log(admin_id);
 
 -- ---------- Row Level Security ----------
 -- single-scorer: seu usuário autenticado tem acesso total.
@@ -167,6 +210,7 @@ alter table match_attendances     enable row level security;
 alter table gk_shifts             enable row level security;
 alter table match_events          enable row level security;
 alter table player_match_results  enable row level security;
+alter table match_edit_log        enable row level security;
 
 -- Política simples: qualquer authenticated user pode tudo.
 -- (Se quiser abrir leitura pública pro grupo ver o ranking, crie
@@ -177,7 +221,7 @@ begin
   for t in
     select unnest(array[
       'players','seasons','matches','match_attendances',
-      'gk_shifts','match_events','player_match_results'
+      'gk_shifts','match_events','player_match_results','match_edit_log'
     ])
   loop
     execute format(
@@ -186,3 +230,119 @@ begin
     );
   end loop;
 end $$;
+
+-- RLS para admin — permite update em matches FINISHED se user.is_admin
+create policy "admin_update_finished_match" on matches
+  for update
+  to authenticated
+  using (
+    status = 'FINISHED'
+    and exists (
+      select 1 from players
+      where players.id = auth.user_id()
+      and is_admin = true
+    )
+  )
+  with check (true);
+
+-- ---------- HELPER FUNCTIONS ----------
+
+-- Recalcula player_match_results para uma partida (usado après edit)
+-- Deleta PMR antigas e insere novas baseado em match_events
+create or replace function recompute_match_results(p_match_id uuid)
+returns table(match_id uuid, updated_count int) as $$
+declare
+  v_match_id uuid := p_match_id;
+  v_season_id uuid;
+  v_score_a int;
+  v_score_b int;
+  v_mvp_player_id uuid;
+  v_team_a_players uuid[];
+  v_team_b_players uuid[];
+  v_updated_count int := 0;
+begin
+  -- Fetch match details
+  select m.season_id, m.score_a, m.score_b, m.mvp_player_id
+  into v_season_id, v_score_a, v_score_b, v_mvp_player_id
+  from matches m
+  where m.id = v_match_id;
+
+  if v_season_id is null then
+    raise exception 'Match not found: %', v_match_id;
+  end if;
+
+  -- Delete existing player_match_results for this match
+  delete from player_match_results where match_id = v_match_id;
+  
+  -- Re-insert player_match_results based on match_events
+  -- (This is a simplified version — in production, you'd use the buildPlayerMatchResult logic)
+  with team_players as (
+    select
+      ma.player_id,
+      ma.team,
+      ma.match_id
+    from match_attendances ma
+    where ma.match_id = v_match_id
+  ),
+  player_events as (
+    select
+      tp.player_id,
+      tp.team,
+      sum(me.points) as event_points,
+      count(*) filter (where me.event_type = 'GOAL') as goals,
+      count(*) filter (where me.event_type = 'ASSIST') as assists,
+      count(*) filter (where me.event_type in ('SAVE', 'PENALTY_SAVE')) as saves
+    from team_players tp
+    left join match_events me on me.player_id = tp.player_id and me.match_id = tp.match_id
+    group by tp.player_id, tp.team
+  )
+  insert into player_match_results (
+    match_id, player_id, team, outcome, outcome_points,
+    event_points, mvp_bonus, total_points, match_rating,
+    goals, assists, saves
+  )
+  select
+    v_match_id,
+    pe.player_id,
+    pe.team,
+    case
+      when v_score_a = v_score_b then 'DRAW'::text
+      when (pe.team = 1 and v_score_a > v_score_b) or (pe.team = 2 and v_score_b > v_score_a) then 'WIN'::text
+      else 'LOSS'::text
+    end as outcome,
+    case
+      when v_score_a = v_score_b then 1.5::numeric
+      when (pe.team = 1 and v_score_a > v_score_b) or (pe.team = 2 and v_score_b > v_score_a) then 5.0::numeric
+      else -1.0::numeric
+    end as outcome_points,
+    coalesce(pe.event_points, 0)::numeric(5,2) as event_points,
+    case when v_mvp_player_id = pe.player_id then 4.0::numeric else 0::numeric end as mvp_bonus,
+    (
+      case
+        when v_score_a = v_score_b then 1.5::numeric
+        when (pe.team = 1 and v_score_a > v_score_b) or (pe.team = 2 and v_score_b > v_score_a) then 5.0::numeric
+        else -1.0::numeric
+      end
+      + coalesce(pe.event_points, 0)::numeric
+      + case when v_mvp_player_id = pe.player_id then 4.0::numeric else 0::numeric end
+    )::numeric(5,2) as total_points,
+    (
+      case
+        when v_score_a = v_score_b then 1.5::numeric
+        when (pe.team = 1 and v_score_a > v_score_b) or (pe.team = 2 and v_score_b > v_score_a) then 5.0::numeric
+        else -1.0::numeric
+      end
+      + coalesce(pe.event_points, 0)::numeric
+      + case when v_mvp_player_id = pe.player_id then 4.0::numeric else 0::numeric end
+    ) / greatest(count(*) over (), 1) as match_rating,
+    coalesce(pe.goals, 0)::int,
+    coalesce(pe.assists, 0)::int,
+    coalesce(pe.saves, 0)::int
+  from player_events pe;
+
+  get diagnostics v_updated_count = row_count;
+
+  return query select v_match_id, v_updated_count;
+end;
+$$ language plpgsql;
+

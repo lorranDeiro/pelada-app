@@ -106,6 +106,7 @@ export interface SeasonStats {
   draws: number;
   losses: number;
   mvp_count: number;
+  dynamic_rating?: number;
 }
 
 /** Player enriched with current season performance, used by the balancer. */

@@ -9,8 +9,9 @@ import { PlayerDialog } from '@/components/player-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { StarRating } from '@/components/ui-patterns';
 import { supabase } from '@/lib/supabase';
-import type { Player } from '@/lib/types';
+import type { Player, SeasonStats } from '@/lib/types';
 
 export default function ElencoPage() {
   return (
@@ -23,20 +24,42 @@ export default function ElencoPage() {
 
 function ElencoContent() {
   const [players, setPlayers] = useState<Player[] | null>(null);
+  const [seasonStats, setSeasonStats] = useState<Map<string, SeasonStats>>(new Map());
   const [editing, setEditing] = useState<Player | null>(null);
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase
+    // Fetch players
+    const { data: playersData, error: playersError } = await supabase
       .from('players')
       .select('*')
       .order('active', { ascending: false })
       .order('name');
-    if (error) {
-      toast.error('Erro ao carregar jogadores', { description: error.message });
+    if (playersError) {
+      toast.error('Erro ao carregar jogadores', { description: playersError.message });
       return;
     }
-    setPlayers(data ?? []);
+    setPlayers(playersData ?? []);
+
+    // Fetch active season stats
+    const { data: seasonData } = await supabase
+      .from('seasons')
+      .select('*')
+      .eq('active', true)
+      .single();
+
+    if (seasonData) {
+      const { data: statsData } = await supabase
+        .from('v_player_season_stats')
+        .select('*')
+        .eq('season_id', seasonData.id);
+
+      const statsMap = new Map<string, SeasonStats>();
+      (statsData ?? []).forEach((stat) => {
+        statsMap.set(stat.player_id, stat);
+      });
+      setSeasonStats(statsMap);
+    }
   }, []);
 
   useEffect(() => {
@@ -88,52 +111,68 @@ function ElencoContent() {
         </Card>
       ) : (
         <ul className="space-y-2">
-          {players.map((p) => (
-            <li key={p.id}>
-              <Card className={p.active ? '' : 'opacity-50'}>
-                <CardContent className="flex items-center gap-3 p-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium">{p.name}</span>
-                      {p.position === 'GOLEIRO_FIXO' && (
-                        <Badge variant="secondary">🧤 Goleiro</Badge>
-                      )}
-                      {!p.active && <Badge variant="outline">Inativo</Badge>}
+          {players.map((p) => {
+            const stats = seasonStats.get(p.id);
+            return (
+              <li key={p.id}>
+                <Card className={p.active ? '' : 'opacity-50'}>
+                  <CardContent className="flex items-center gap-3 p-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-medium">{p.name}</span>
+                        {p.position === 'GOLEIRO_FIXO' && (
+                          <Badge variant="secondary">🧤 Goleiro</Badge>
+                        )}
+                        {!p.active && <Badge variant="outline">Inativo</Badge>}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span>Nível Inicial:</span>
+                          {renderStars(p.skill_level)}
+                        </div>
+                        {stats && stats.matches_played > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span>Nível Temporada:</span>
+                            <StarRating
+                              value={stats.dynamic_rating}
+                              size="xs"
+                              showValue={true}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {renderStars(p.skill_level)}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => toggleActive(p)}
+                        title={p.active ? 'Inativar' : 'Ativar'}
+                      >
+                        {p.active ? 'Inativar' : 'Ativar'}
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setEditing(p)}
+                        aria-label="Editar"
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => remove(p)}
+                        aria-label="Remover"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => toggleActive(p)}
-                      title={p.active ? 'Inativar' : 'Ativar'}
-                    >
-                      {p.active ? 'Inativar' : 'Ativar'}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => setEditing(p)}
-                      aria-label="Editar"
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => remove(p)}
-                      aria-label="Remover"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
+                  </CardContent>
+                </Card>
+              </li>
+            );
+          })}
         </ul>
       )}
 

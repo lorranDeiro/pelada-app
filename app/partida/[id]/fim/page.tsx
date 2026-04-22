@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Minus, Plus, Trophy } from 'lucide-react';
@@ -10,8 +10,11 @@ import { RequireAuth } from '@/components/require-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { MatchEditBanner } from '@/components/match-edit-banner';
 import { fetchEvents } from '@/lib/events';
 import { buildPlayerMatchResult, outcomeFor } from '@/lib/scoring';
+import { finalizeMatch } from '@/lib/matches';
+import { isAdmin, recomputeMatch, logMatchEdit } from '@/lib/admin';
 import { supabase } from '@/lib/supabase';
 import type { Match, MatchAttendance, MatchEvent, Player } from '@/lib/types';
 
@@ -35,6 +38,15 @@ function FimLoader({ matchId }: { matchId: string }) {
   const [match, setMatch] = useState<Match | null>(null);
   const [roster, setRoster] = useState<RosterPlayer[] | null>(null);
   const [events, setEvents] = useState<MatchEvent[] | null>(null);
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
+
+  const checkAdmin = useCallback(async () => {
+    const { data: user } = await supabase.auth.getUser();
+    if (user.user?.id) {
+      const admin = await isAdmin(user.user.id);
+      setUserIsAdmin(admin);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -70,21 +82,26 @@ function FimLoader({ matchId }: { matchId: string }) {
           description: e instanceof Error ? e.message : String(e),
         });
       }
+
+      await checkAdmin();
     })();
-  }, [matchId]);
+  }, [matchId, checkAdmin]);
 
   if (!match || !roster || !events) {
     return <main className="p-4 text-sm text-muted-foreground">Carregando…</main>;
   }
 
   if (match.status === 'FINISHED') {
-    return <AlreadyFinished match={match} />;
+    return <AlreadyFinished match={match} userIsAdmin={userIsAdmin} />;
   }
 
   return <FimForm match={match} roster={roster} events={events} />;
 }
 
-function AlreadyFinished({ match }: { match: Match }) {
+function AlreadyFinished({ match, userIsAdmin }: { match: Match; userIsAdmin: boolean }) {
+  const router = useRouter();
+  const [isEditing, setIsEditing] = useState(false);
+
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 space-y-4 p-4">
       <Card>
@@ -98,12 +115,145 @@ function AlreadyFinished({ match }: { match: Match }) {
             Placar final: <strong>{match.team_a_name}</strong> {match.score_a} ×{' '}
             {match.score_b} <strong>{match.team_b_name}</strong>
           </p>
-          <Button asChild>
-            <Link href="/">Ver ranking</Link>
-          </Button>
+
+          {userIsAdmin && (
+            <div className="flex gap-2 pt-2">
+              <Button asChild>
+                <Link href="/">Ver ranking</Link>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditing(true)}
+              >
+                Editar partida
+              </Button>
+            </div>
+          )}
+
+          {!userIsAdmin && (
+            <Button asChild>
+              <Link href="/">Ver ranking</Link>
+            </Button>
+          )}
         </CardContent>
       </Card>
+
+      {/* Modal/Dialog para edição */}
+      {isEditing && userIsAdmin && (
+        <EditMatchDialog
+          match={match}
+          onClose={() => setIsEditing(false)}
+          onSaved={() => {
+            setIsEditing(false);
+            router.refresh();
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+interface EditMatchDialogProps {
+  match: Match;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+function EditMatchDialog({ match, onClose, onSaved }: EditMatchDialogProps) {
+  const router = useRouter();
+  const [scoreA, setScoreA] = useState(match.score_a);
+  const [scoreB, setScoreB] = useState(match.score_b);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function saveChanges() {
+    setSubmitting(true);
+    try {
+      const { data: user } = await supabase.auth.getUser();
+
+      // Log before state
+      await logMatchEdit(
+        match.id,
+        user.user?.id || null,
+        'score_changed',
+        { score_a: match.score_a, score_b: match.score_b },
+        { score_a: scoreA, score_b: scoreB }
+      );
+
+      // Update match
+      const { error: updateErr } = await supabase
+        .from('matches')
+        .update({
+          score_a: scoreA,
+          score_b: scoreB,
+        })
+        .eq('id', match.id);
+      if (updateErr) throw updateErr;
+
+      // Recalculate player results
+      const result = await recomputeMatch(match.id);
+      if (result) {
+        toast.success(`Partida recalculada — ${result.updated_count} jogadores atualizados`);
+      } else {
+        toast.warning('Recálculo completado com aviso');
+      }
+
+      onSaved();
+    } catch (e) {
+      toast.error('Erro ao salvar alterações', {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Card className="fixed inset-4 z-50 max-w-sm mx-auto my-auto overflow-y-auto">
+      <CardHeader>
+        <CardTitle>Editar placar</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <MatchEditBanner isEditing={true} />
+
+        <div>
+          <label className="text-sm font-medium">{match.team_a_name}</label>
+          <input
+            type="number"
+            min="0"
+            value={scoreA}
+            onChange={(e) => setScoreA(parseInt(e.target.value) || 0)}
+            className="mt-1 w-full rounded border px-2 py-1"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">{match.team_b_name}</label>
+          <input
+            type="number"
+            min="0"
+            value={scoreB}
+            onChange={(e) => setScoreB(parseInt(e.target.value) || 0)}
+            className="mt-1 w-full rounded border px-2 py-1"
+          />
+        </div>
+
+        <div className="flex gap-2 pt-4">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={saveChanges}
+            disabled={submitting}
+          >
+            {submitting ? 'Salvando…' : 'Salvar alterações'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -138,41 +288,7 @@ function FimForm({
   async function finalize() {
     setSubmitting(true);
     try {
-      const { error: updateErr } = await supabase
-        .from('matches')
-        .update({
-          score_a: scoreA,
-          score_b: scoreB,
-          mvp_player_id: mvpId,
-          status: 'FINISHED',
-        })
-        .eq('id', match.id);
-      if (updateErr) throw updateErr;
-
-      const eventsByPlayer = new Map<string, MatchEvent[]>();
-      events.forEach((e) => {
-        const list = eventsByPlayer.get(e.player_id) ?? [];
-        list.push(e);
-        eventsByPlayer.set(e.player_id, list);
-      });
-
-      const results = roster.map((p) => {
-        const outcome = outcomeFor(p.team, scoreA, scoreB);
-        return buildPlayerMatchResult({
-          match_id: match.id,
-          player_id: p.id,
-          team: p.team,
-          outcome,
-          events: eventsByPlayer.get(p.id) ?? [],
-          isMvp: mvpId === p.id,
-        });
-      });
-
-      const { error: insertErr } = await supabase
-        .from('player_match_results')
-        .insert(results);
-      if (insertErr) throw insertErr;
-
+      await finalizeMatch(match, roster, events, scoreA, scoreB, mvpId);
       toast.success('Partida finalizada!');
       router.push('/');
     } catch (e) {

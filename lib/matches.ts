@@ -1,6 +1,54 @@
 import { supabase } from './supabase';
-import type { Match } from './types';
+import type { Match, MatchEvent, Player } from './types';
 import type { HistoryFilters } from '@/components/history-filters';
+import { buildPlayerMatchResult, outcomeFor } from './scoring';
+
+export async function finalizeMatch(
+  match: Match,
+  roster: Array<Player & { team: 1 | 2 }>,
+  events: MatchEvent[],
+  scoreA: number,
+  scoreB: number,
+  mvpId: string | null
+): Promise<void> {
+  // Update match status and scores
+  const { error: updateErr } = await supabase
+    .from('matches')
+    .update({
+      score_a: scoreA,
+      score_b: scoreB,
+      mvp_player_id: mvpId,
+      status: 'FINISHED',
+    })
+    .eq('id', match.id);
+  if (updateErr) throw updateErr;
+
+  // Build player_match_results
+  const eventsByPlayer = new Map<string, MatchEvent[]>();
+  events.forEach((e) => {
+    const list = eventsByPlayer.get(e.player_id) ?? [];
+    list.push(e);
+    eventsByPlayer.set(e.player_id, list);
+  });
+
+  const results = roster.map((p) => {
+    const outcome = outcomeFor(p.team, scoreA, scoreB);
+    return buildPlayerMatchResult({
+      match_id: match.id,
+      player_id: p.id,
+      team: p.team,
+      outcome,
+      events: eventsByPlayer.get(p.id) ?? [],
+      isMvp: mvpId === p.id,
+    });
+  });
+
+  // Insert player_match_results
+  const { error: insertErr } = await supabase
+    .from('player_match_results')
+    .insert(results);
+  if (insertErr) throw insertErr;
+}
 
 export async function getFinishedMatches(filters?: HistoryFilters): Promise<Match[]> {
   let query = supabase

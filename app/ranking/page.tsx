@@ -6,6 +6,7 @@ import type { SeasonStats } from '@/lib/types';
 import { Trophy, Zap, Target } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StarRating } from '@/components/ui-patterns';
 import { DataExport } from '@/components/data-export';
 
 export default function PublicRankingPage() {
@@ -103,12 +104,24 @@ export default function PublicRankingPage() {
                   </div>
 
                   {/* Stats em grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
                     {/* Pontos */}
                     <div className="bg-gray-900/50 rounded p-2">
                       <div className="text-xs text-gray-400">Pontos</div>
                       <div className="text-xl font-bold text-green-400">
                         {player.total_points.toFixed(1)}
+                      </div>
+                    </div>
+
+                    {/* Nível Dinâmico */}
+                    <div className="bg-gray-900/50 rounded p-2">
+                      <div className="text-xs text-gray-400">Nível</div>
+                      <div className="flex items-center">
+                        <StarRating
+                          value={player.dynamic_rating}
+                          size="sm"
+                          showValue={true}
+                        />
                       </div>
                     </div>
 

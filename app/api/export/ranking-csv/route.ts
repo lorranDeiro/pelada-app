@@ -1,18 +1,25 @@
 import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
-export async function GET(): Promise<NextResponse> {
-  const { data: activeSeason, error: seasonErr } = await supabase
+export async function GET(request: Request): Promise<Response> {
+  const { searchParams } = new URL(request.url);
+  const seasonIdParam = searchParams.get('season_id');
+
+  // Get active season or specified season
+  let seasonQuery = supabase
     .from('seasons')
-    .select('id, name')
-    .eq('active', true)
-    .single();
+    .select('id, name');
+  
+  if (seasonIdParam) {
+    seasonQuery = seasonQuery.eq('id', seasonIdParam);
+  } else {
+    seasonQuery = seasonQuery.eq('active', true);
+  }
+
+  const { data: activeSeason, error: seasonErr } = await seasonQuery.single();
 
   if (seasonErr || !activeSeason) {
-    return NextResponse.json(
-      { error: 'Nenhuma temporada ativa encontrada' },
-      { status: 404 }
-    );
+    return new NextResponse('Nenhuma temporada encontrada', { status: 404 });
   }
 
   const { data, error } = await supabase
@@ -22,31 +29,50 @@ export async function GET(): Promise<NextResponse> {
     .order('total_points', { ascending: false });
 
   if (error) {
-    return NextResponse.json(
-      { error: 'Falha ao buscar dados de ranking', details: error.message },
-      { status: 500 }
-    );
+    return new NextResponse('Falha ao buscar dados de ranking', { status: 500 });
   }
 
-  const exportData = (data ?? []).map((player, index) => ({
-    Posição: index + 1,
-    Jogador: player.name,
-    Partidas: player.matches_played,
-    Pontos: Number(player.total_points).toFixed(1),
-    'Nota Média': Number(player.avg_rating).toFixed(1),
-    Gols: player.goals,
-    Assistências: player.assists,
-    Defesas: player.saves,
-    Vitórias: player.wins,
-    Empates: player.draws,
-    Derrotas: player.losses,
-    MVP: player.mvp_count,
-  }));
+  // Build CSV rows with proper escaping
+  const headers = ['Posição', 'Jogador', 'Nível', 'Partidas', 'Pontos', 'Nota Média', 'Gols', 'Assistências', 'Defesas', 'Vitórias', 'Empates', 'Derrotas', 'MVP'];
+  
+  const rows = (data ?? []).map((player, index) => [
+    String(index + 1),
+    player.name || '',
+    String(Number(player.dynamic_rating || 3.0).toFixed(1)),
+    String(player.matches_played || 0),
+    Number(player.total_points || 0).toFixed(1),
+    Number(player.avg_rating || 0).toFixed(1),
+    String(player.goals || 0),
+    String(player.assists || 0),
+    String(player.saves || 0),
+    String(player.wins || 0),
+    String(player.draws || 0),
+    String(player.losses || 0),
+    String(player.mvp_count || 0),
+  ]);
 
-  return NextResponse.json({
-    success: true,
-    season: activeSeason.name,
-    data: exportData,
-    generatedAt: new Date().toISOString(),
+  // Escape CSV field (handle semicolons, quotes, line breaks)
+  function escapeCSVField(field: string): string {
+    if (field.includes(';') || field.includes('"') || field.includes('\n')) {
+      return `"${field.replace(/"/g, '""')}"`;
+    }
+    return field;
+  }
+
+  // Build CSV content with BOM for UTF-8 compatibility in Excel pt-BR
+  const csvContent = [
+    '\uFEFF' + headers.map(escapeCSVField).join(';'),
+    ...rows.map(row => row.map(escapeCSVField).join(';')),
+  ].join('\n');
+
+  const filename = `ranking-${activeSeason.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+
+  return new NextResponse(csvContent, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/csv;charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
   });
 }
