@@ -48,7 +48,7 @@ function HistoricoContent() {
       const { error } = await supabase
         .from('matches')
         .delete()
-        .neq('id', '');
+        .gt('id', '');
       
       if (error) {
         toast.error('Erro ao limpar histórico', { description: error.message });

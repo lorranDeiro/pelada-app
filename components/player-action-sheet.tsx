@@ -3,6 +3,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -48,6 +49,7 @@ export function PlayerActionSheet({ player, isOnGoal, onClose, onPick }: Props) 
               </span>
             ) : null}
           </DialogTitle>
+          <DialogDescription>Selecione uma ação para registrar</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-2">
           {actions.map((a) => {

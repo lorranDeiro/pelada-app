@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -71,6 +72,9 @@ export function PlayerDialog({ player, open, onOpenChange, onSaved }: Props) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{player ? 'Editar jogador' : 'Novo jogador'}</DialogTitle>
+          <DialogDescription>
+            {player ? 'Atualize as informações do jogador' : 'Adicione um novo jogador ao elenco'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

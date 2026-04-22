@@ -3,6 +3,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -31,6 +32,7 @@ export function GkPickerDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Trocar goleiro • {teamName}</DialogTitle>
+          <DialogDescription>Selecione um jogador para ser o goleiro</DialogDescription>
         </DialogHeader>
         <ul className="space-y-1">
           {players.map((p) => {

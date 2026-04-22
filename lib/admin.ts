@@ -6,14 +6,25 @@ import { supabase } from './supabase';
 export async function isAdmin(userId: string | null | undefined): Promise<boolean> {
   if (!userId) return false;
 
-  const { data, error } = await supabase
-    .from('players')
-    .select('is_admin')
-    .eq('id', userId)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('players')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
 
-  if (error || !data) return false;
-  return data.is_admin === true;
+    if (error) {
+      // Se receber erro 404, o usuário não existe mas não é admin
+      if (error.code === 'PGRST116') return false;
+      console.error('isAdmin error:', error);
+      return false;
+    }
+    
+    return data?.is_admin === true;
+  } catch (e) {
+    console.error('isAdmin exception:', e);
+    return false;
+  }
 }
 
 /**

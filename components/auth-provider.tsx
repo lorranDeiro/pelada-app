@@ -20,17 +20,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    // Verificar sessão atual e configurar listener
+    (async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (!error && data.session) {
+          setSession(data.session);
+        }
+      } catch (err) {
+        console.error('Session check error:', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
+    // Listener para mudanças de autenticação
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        setSession(newSession);
+        
+        // Se token expirou, fazer logout
+        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          if (!newSession) {
+            router.push('/login');
+          }
+        }
+      }
+    );
 
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    return () => {
+      subscription?.subscription.unsubscribe();
+    };
+  }, [router]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
