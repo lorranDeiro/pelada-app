@@ -7,6 +7,7 @@ import type { EventType, MatchEvent, MatchOutcome } from './types';
 /** Points awarded per event. Tune these to adjust the "feel" of the ranking. */
 export const EVENT_WEIGHTS: Record<EventType, number> = {
   GOAL:                 5.0,
+  WINNING_GOAL:         7.0,  // Fator Clutch: Gol Decisivo
   ASSIST:               3.5,
   SAVE:                 3.0,
   PENALTY_SAVE:         5.0,
@@ -63,7 +64,7 @@ export function buildPlayerMatchResult(params: {
   const total_points = event_points + outcome_points + mvp_bonus;
   const match_rating = computeMatchRating(total_points);
 
-  const goals = events.filter(e => e.event_type === 'GOAL').length;
+  const goals = events.filter(e => e.event_type === 'GOAL' || e.event_type === 'WINNING_GOAL').length;
   const assists = events.filter(e => e.event_type === 'ASSIST').length;
   const saves = events.filter(
     e => e.event_type === 'SAVE' || e.event_type === 'PENALTY_SAVE'

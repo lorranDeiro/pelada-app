@@ -11,6 +11,7 @@ create type player_position as enum ('GOLEIRO_FIXO', 'JOGADOR');
 
 create type event_type as enum (
   'GOAL',                   -- +5.0
+  'WINNING_GOAL',           -- +7.0 (Gol Decisivo - Fator Clutch)
   'ASSIST',                 -- +3.5
   'SAVE',                   -- +3.0 (goleiro ou jogador no turno de gol)
   'PENALTY_SAVE',           -- +5.0
@@ -201,6 +202,21 @@ create table match_edit_log (
 create index idx_edit_log_match on match_edit_log(match_id);
 create index idx_edit_log_admin on match_edit_log(admin_id);
 
+-- ---------- mvp_votes ----------
+-- Sistema de votação: janela de 5 minutos após match FINISHED
+-- 1 voto por user por match (último voto sobrescreve)
+create table mvp_votes (
+  id              uuid primary key default uuid_generate_v4(),
+  match_id        uuid not null references matches(id) on delete cascade,
+  voting_user_id  uuid not null,  -- user_id do votante (via Supabase auth)
+  vote_player_id  uuid not null references players(id) on delete cascade,
+  created_at      timestamptz not null default now(),
+  unique(match_id, voting_user_id)  -- 1 voto por user por match
+);
+
+create index idx_mvp_votes_match on mvp_votes(match_id);
+create index idx_mvp_votes_user on mvp_votes(voting_user_id);
+
 -- ---------- Row Level Security ----------
 -- single-scorer: seu usuário autenticado tem acesso total.
 alter table players               enable row level security;
@@ -211,6 +227,7 @@ alter table gk_shifts             enable row level security;
 alter table match_events          enable row level security;
 alter table player_match_results  enable row level security;
 alter table match_edit_log        enable row level security;
+alter table mvp_votes             enable row level security;
 
 -- Política simples: qualquer authenticated user pode tudo.
 -- (Se quiser abrir leitura pública pro grupo ver o ranking, crie
@@ -221,7 +238,7 @@ begin
   for t in
     select unnest(array[
       'players','seasons','matches','match_attendances',
-      'gk_shifts','match_events','player_match_results','match_edit_log'
+      'gk_shifts','match_events','player_match_results','match_edit_log','mvp_votes'
     ])
   loop
     execute format(
@@ -289,7 +306,7 @@ begin
       tp.player_id,
       tp.team,
       sum(me.points) as event_points,
-      count(*) filter (where me.event_type = 'GOAL') as goals,
+      count(*) filter (where me.event_type in ('GOAL', 'WINNING_GOAL')) as goals,
       count(*) filter (where me.event_type = 'ASSIST') as assists,
       count(*) filter (where me.event_type in ('SAVE', 'PENALTY_SAVE')) as saves
     from team_players tp

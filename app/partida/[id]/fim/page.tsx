@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MatchEditBanner } from '@/components/match-edit-banner';
+import { MvpVotingModal } from '@/components/mvp-voting-modal';
 import { fetchEvents } from '@/lib/events';
 import { buildPlayerMatchResult, outcomeFor } from '@/lib/scoring';
 import { finalizeMatch } from '@/lib/matches';
@@ -92,15 +93,51 @@ function FimLoader({ matchId }: { matchId: string }) {
   }
 
   if (match.status === 'FINISHED') {
-    return <AlreadyFinished match={match} userIsAdmin={userIsAdmin} />;
+    return <AlreadyFinished match={match} roster={roster} userIsAdmin={userIsAdmin} />;
   }
 
   return <FimForm match={match} roster={roster} events={events} />;
 }
 
-function AlreadyFinished({ match, userIsAdmin }: { match: Match; userIsAdmin: boolean }) {
+function AlreadyFinished({
+  match,
+  roster,
+  userIsAdmin,
+}: {
+  match: Match;
+  roster: RosterPlayer[];
+  userIsAdmin: boolean;
+}) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
+  const [showVotingModal, setShowVotingModal] = useState(true);
+  const [votingOpen, setVotingOpen] = useState(false);
+
+  useEffect(() => {
+    // Check if voting window is still open (5 minutes)
+    const checkVotingWindow = async () => {
+      try {
+        const { data: matchData } = await supabase
+          .from('matches')
+          .select('status, created_at')
+          .eq('id', match.id)
+          .single();
+
+        if (!matchData) return;
+
+        const finishedAt = new Date(matchData.created_at);
+        const now = new Date();
+        const elapsedMs = now.getTime() - finishedAt.getTime();
+        const votingWindowMs = 5 * 60 * 1000;
+
+        setVotingOpen(elapsedMs < votingWindowMs);
+      } catch (e) {
+        // Silently fail
+      }
+    };
+
+    checkVotingWindow();
+  }, [match.id]);
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 space-y-4 p-4">
@@ -115,6 +152,14 @@ function AlreadyFinished({ match, userIsAdmin }: { match: Match; userIsAdmin: bo
             Placar final: <strong>{match.team_a_name}</strong> {match.score_a} ×{' '}
             {match.score_b} <strong>{match.team_b_name}</strong>
           </p>
+
+          {votingOpen && (
+            <div className="rounded-md bg-amber-50 p-3 text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+              <p className="text-xs font-medium">
+                🗳️ A votação de MVP está aberta por 5 minutos!
+              </p>
+            </div>
+          )}
 
           {userIsAdmin && (
             <div className="flex gap-2 pt-2">
@@ -148,6 +193,10 @@ function AlreadyFinished({ match, userIsAdmin }: { match: Match; userIsAdmin: bo
             router.refresh();
           }}
         />
+      )}
+
+      {votingOpen && showVotingModal && (
+        <MvpVotingModal open={true} matchId={match.id} candidates={roster} />
       )}
     </main>
   );

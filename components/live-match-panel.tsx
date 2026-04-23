@@ -21,6 +21,7 @@ import type { EventType, GkShift, Match, MatchEvent, Player } from '@/lib/types'
 
 const EVENT_LABELS: Record<EventType, string> = {
   GOAL: '⚽ Gol',
+  WINNING_GOAL: '🔥 Gol Decisivo',
   ASSIST: '🅰️ Assist',
   SAVE: '🧤 Defesa',
   PENALTY_SAVE: '🧤 Pênalti',

@@ -20,6 +20,7 @@ interface Props {
 
 const BASE_ACTIONS: { type: EventType; label: string; tone?: 'danger' }[] = [
   { type: 'GOAL', label: '⚽ Gol' },
+  { type: 'WINNING_GOAL', label: '🔥 Gol Decisivo' },
   { type: 'ASSIST', label: '🅰️ Assistência' },
   { type: 'TACKLE', label: '🛡️ Desarme' },
   { type: 'CREATION', label: '✨ Criação' },

@@ -10,6 +10,7 @@ export type MatchStatus = 'DRAFT' | 'LIVE' | 'FINISHED';
 
 export type EventType =
   | 'GOAL'
+  | 'WINNING_GOAL'
   | 'ASSIST'
   | 'SAVE'
   | 'PENALTY_SAVE'
