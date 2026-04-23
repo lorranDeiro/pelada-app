@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Dice5, Users } from 'lucide-react';
+import { ArrowLeft, Dice5, Users, Hand } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppNav } from '@/components/app-nav';
 import { RequireAuth } from '@/components/require-auth';
@@ -11,13 +11,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ManualTeamSelector } from '@/components/manual-team-selector';
 import { fetchActivePlayers, fetchRankedPlayers } from '@/lib/players';
 import { getOrCreateActiveSeason } from '@/lib/season';
+import { assignTeamsManually } from '@/lib/team-selector';
 import { supabase } from '@/lib/supabase';
 import { balanceTeams, type BalancedTeams } from '@/lib/team-balancer';
 import type { Player, RankedPlayer } from '@/lib/types';
 
-type Step = 'checkin' | 'sorteio';
+type Step = 'checkin' | 'modo-selecao' | 'sorteio' | 'formacao-manual';
 
 export default function NovaPartidaPage() {
   return (
@@ -34,8 +36,10 @@ function NovaPartidaContent() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [step, setStep] = useState<Step>('checkin');
   const [teams, setTeams] = useState<BalancedTeams | null>(null);
+  const [rankedPlayers, setRankedPlayers] = useState<RankedPlayer[] | null>(null);
   const [seed, setSeed] = useState(42);
   const [confirming, setConfirming] = useState(false);
+  const [matchIdForManual, setMatchIdForManual] = useState<string | null>(null);
 
   useEffect(() => {
     fetchActivePlayers()
@@ -52,11 +56,22 @@ function NovaPartidaContent() {
     });
   }
 
-  async function sortear(newSeed = seed) {
+  async function proceedToModeSelection() {
     try {
       const season = await getOrCreateActiveSeason();
       const ranked = await fetchRankedPlayers(season.id, Array.from(selected));
-      const result = balanceTeams(ranked, { seed: newSeed });
+      setRankedPlayers(ranked);
+      setStep('modo-selecao');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido';
+      toast.error('Erro ao carregar', { description: msg });
+    }
+  }
+
+  async function sortear(newSeed = seed) {
+    if (!rankedPlayers) return;
+    try {
+      const result = balanceTeams(rankedPlayers, { seed: newSeed });
       setTeams(result);
       setSeed(newSeed);
       setStep('sorteio');
@@ -66,7 +81,7 @@ function NovaPartidaContent() {
     }
   }
 
-  async function confirmar() {
+  async function confirmarSorteio() {
     if (!teams) return;
     setConfirming(true);
     try {
@@ -113,6 +128,52 @@ function NovaPartidaContent() {
     }
   }
 
+  async function confirmarManual(teamA: RankedPlayer[], teamB: RankedPlayer[]) {
+    setConfirming(true);
+    try {
+      const season = await getOrCreateActiveSeason();
+
+      const { data: match, error: matchError } = await supabase
+        .from('matches')
+        .insert({
+          season_id: season.id,
+          played_at: new Date().toISOString().slice(0, 10),
+          status: 'DRAFT',
+        })
+        .select()
+        .single();
+      if (matchError || !match) throw matchError ?? new Error('Falha ao criar partida');
+
+      const attendances = [
+        ...teamA.map((p) => ({ match_id: match.id, player_id: p.id, team: 1 })),
+        ...teamB.map((p) => ({ match_id: match.id, player_id: p.id, team: 2 })),
+      ];
+      const { error: attErr } = await supabase.from('match_attendances').insert(attendances);
+      if (attErr) throw attErr;
+
+      const gkShifts = [
+        ...teamA
+          .filter((p) => p.position === 'GOLEIRO_FIXO')
+          .map((p) => ({ match_id: match.id, team: 1, player_id: p.id })),
+        ...teamB
+          .filter((p) => p.position === 'GOLEIRO_FIXO')
+          .map((p) => ({ match_id: match.id, team: 2, player_id: p.id })),
+      ];
+      if (gkShifts.length > 0) {
+        const { error: gkErr } = await supabase.from('gk_shifts').insert(gkShifts);
+        if (gkErr) throw gkErr;
+      }
+
+      toast.success('Partida criada com montagem manual!');
+      router.push(`/partida/${match.id}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido';
+      toast.error('Erro ao confirmar', { description: msg });
+    } finally {
+      setConfirming(false);
+    }
+  }
+
   if (players === null) {
     return (
       <main className="p-4 text-sm text-muted-foreground">Carregando jogadores…</main>
@@ -136,15 +197,49 @@ function NovaPartidaContent() {
     );
   }
 
+  if (step === 'modo-selecao') {
+    return (
+      <ModeSelection
+        playerCount={selected.size}
+        onManual={() => setStep('formacao-manual')}
+        onAutomatic={() => sortear(seed)}
+        onBack={() => setStep('checkin')}
+      />
+    );
+  }
+
   if (step === 'sorteio' && teams) {
     return (
       <TeamsPreview
         teams={teams}
-        onBack={() => setStep('checkin')}
+        onBack={() => setStep('modo-selecao')}
         onReshuffle={() => sortear(seed + 1)}
-        onConfirm={confirmar}
+        onConfirm={confirmarSorteio}
         confirming={confirming}
       />
+    );
+  }
+
+  if (step === 'formacao-manual' && rankedPlayers) {
+    return (
+      <main className="mx-auto w-full max-w-7xl flex-1 p-4">
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setStep('modo-selecao')}
+            disabled={confirming}
+            className="mb-4"
+          >
+            <ArrowLeft className="size-4" /> Voltar
+          </Button>
+        </div>
+        <ManualTeamSelector
+          players={rankedPlayers}
+          onSave={confirmarManual}
+          isLoading={confirming}
+        />
+      </main>
     );
   }
 
@@ -153,7 +248,7 @@ function NovaPartidaContent() {
       players={players}
       selected={selected}
       onToggle={toggle}
-      onSortear={() => sortear(seed)}
+      onProceed={() => proceedToModeSelection()}
     />
   );
 }
@@ -162,20 +257,20 @@ function CheckIn({
   players,
   selected,
   onToggle,
-  onSortear,
+  onProceed,
 }: {
   players: Player[];
   selected: Set<string>;
   onToggle: (id: string) => void;
-  onSortear: () => void;
+  onProceed: () => void;
 }) {
-  const canSort = selected.size >= 4;
+  const canProceed = selected.size >= 4;
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 space-y-4 p-4 pb-24">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Check-in</h1>
-        <Badge variant={canSort ? 'default' : 'outline'}>
+        <Badge variant={canProceed ? 'default' : 'outline'}>
           <Users className="mr-1 size-3" />
           {selected.size} presentes
         </Badge>
@@ -211,10 +306,102 @@ function CheckIn({
 
       <div className="fixed inset-x-0 bottom-0 border-t bg-background p-3">
         <div className="mx-auto max-w-3xl">
-          <Button className="w-full" size="lg" disabled={!canSort} onClick={onSortear}>
-            <Dice5 className="size-4" /> Sortear times ({selected.size})
+          <Button className="w-full" size="lg" disabled={!canProceed} onClick={onProceed}>
+            <Users className="size-4" /> Continuar ({selected.size})
           </Button>
         </div>
+      </div>
+    </main>
+  );
+}
+
+function ModeSelection({
+  playerCount,
+  onManual,
+  onAutomatic,
+  onBack,
+}: {
+  playerCount: number;
+  onManual: () => void;
+  onAutomatic: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <main className="mx-auto w-full max-w-3xl flex-1 space-y-6 p-4">
+      <Button variant="ghost" size="sm" onClick={onBack} className="mb-4">
+        <ArrowLeft className="size-4" /> Voltar
+      </Button>
+
+      <div className="space-y-3">
+        <h2 className="text-3xl font-bold text-text-primary">Como montar as equipas?</h2>
+        <p className="text-text-secondary">
+          Escolha entre sorteio automático balanceado ou montagem manual.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Sorteio Automático */}
+        <Card className="group cursor-pointer border-surface-border hover:border-accent/50 hover:bg-surface-hover transition">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                  <Dice5 className="w-5 h-5 text-accent" />
+                  Sorteio Automático
+                </h3>
+                <p className="text-sm text-text-secondary mt-1">
+                  Algoritmo balanceado por força
+                </p>
+              </div>
+              <Badge variant="outline" className="bg-accent/10">⚡ Rápido</Badge>
+            </div>
+
+            <div className="space-y-2 text-sm text-text-secondary">
+              <p>✓ Equipas equilibradas</p>
+              <p>✓ Distribui goleiros</p>
+              <p>✓ Reshuffle ilimitado</p>
+            </div>
+
+            <Button
+              onClick={onAutomatic}
+              className="w-full bg-gradient-to-r from-accent to-accent-bright hover:from-accent-bright hover:to-accent text-black font-bold"
+            >
+              Sortear ({playerCount})
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Montagem Manual */}
+        <Card className="group cursor-pointer border-surface-border hover:border-accent-secondary/50 hover:bg-surface-hover transition">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                  <Hand className="w-5 h-5 text-accent-secondary" />
+                  Montagem Manual
+                </h3>
+                <p className="text-sm text-text-secondary mt-1">
+                  Controle total da formação
+                </p>
+              </div>
+              <Badge variant="outline" className="bg-accent-secondary/10">🎯 Preciso</Badge>
+            </div>
+
+            <div className="space-y-2 text-sm text-text-secondary">
+              <p>✓ Arraste os jogadores</p>
+              <p>✓ Trocar entre equipas</p>
+              <p>✓ Ajustes de última hora</p>
+            </div>
+
+            <Button
+              onClick={onManual}
+              variant="outline"
+              className="w-full border-accent-secondary text-accent-secondary hover:bg-accent-secondary/10"
+            >
+              Montar ({playerCount})
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );
