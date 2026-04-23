@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 
 /**
  * Verifica se um usuário é admin
+ * Retorna false se houver erro ou usuário não for admin
  */
 export async function isAdmin(userId: string | null | undefined): Promise<boolean> {
   if (!userId) return false;
@@ -9,18 +10,20 @@ export async function isAdmin(userId: string | null | undefined): Promise<boolea
   try {
     const { data, error } = await supabase
       .from('players')
-      .select('is_admin')
+      .select('is_admin', { count: 'exact' })
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      // Se receber erro 404, o usuário não existe mas não é admin
-      if (error.code === 'PGRST116') return false;
-      console.error('isAdmin error:', error);
+      // Log para debugging — erros de autenticação/RLS não são críticos para admin check
+      console.warn('isAdmin query error (non-critical):', error.message);
       return false;
     }
     
-    return data?.is_admin === true;
+    // Se não encontrou o usuário, não é admin
+    if (!data) return false;
+    
+    return data.is_admin === true;
   } catch (e) {
     console.error('isAdmin exception:', e);
     return false;

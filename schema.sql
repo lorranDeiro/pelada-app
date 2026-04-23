@@ -239,7 +239,7 @@ create policy "admin_update_finished_match" on matches
     status = 'FINISHED'
     and exists (
       select 1 from players
-      where players.id = auth.user_id()
+      where players.id = auth.uid()
       and is_admin = true
     )
   )

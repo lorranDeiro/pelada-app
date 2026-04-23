@@ -22,9 +22,15 @@ export default function HistoricoPage() {
 function HistoricoContent() {
   const [matches, setMatches] = useState<Match[] | null>(null);
   const [isClearing, setIsClearing] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (auth.user?.id) {
+        setUserId(auth.user.id);
+      }
+      
       const { data, error } = await supabase
         .from('matches')
         .select('*')
@@ -45,19 +51,39 @@ function HistoricoContent() {
 
     setIsClearing(true);
     try {
-      const { error } = await supabase
-        .from('matches')
-        .delete()
-        .gt('id', '');
-      
-      if (error) {
-        toast.error('Erro ao limpar histórico', { description: error.message });
+      if (!matches || matches.length === 0) {
+        toast.info('Não há partidas a deletar');
+        setIsClearing(false);
         return;
       }
 
-      setMatches([]);
-      toast.success('Histórico limpo com sucesso');
+      // Delete each match individually to respect RLS policies
+      const matchIds = matches.map(m => m.id);
+      let deletedCount = 0;
+      let errorOccurred = false;
+
+      for (const matchId of matchIds) {
+        const { error } = await supabase
+          .from('matches')
+          .delete()
+          .eq('id', matchId);
+        
+        if (error) {
+          console.error(`Error deleting match ${matchId}:`, error);
+          errorOccurred = true;
+        } else {
+          deletedCount++;
+        }
+      }
+
+      if (errorOccurred) {
+        toast.error(`Deletadas ${deletedCount}/${matchIds.length} partidas. Houve erros para algumas partidas.`);
+      } else {
+        setMatches([]);
+        toast.success(`${deletedCount} partidas deletadas com sucesso`);
+      }
     } catch (err) {
+      console.error('Error clearing history:', err);
       toast.error('Erro ao limpar histórico');
     } finally {
       setIsClearing(false);
