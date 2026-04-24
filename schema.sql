@@ -69,6 +69,8 @@ create table matches (
 
 create index idx_matches_season on matches(season_id);
 create index idx_matches_played_at on matches(played_at desc);
+-- Ranking público filtra por season + status = FINISHED o tempo todo
+create index idx_matches_season_status on matches(season_id, status) where status = 'FINISHED';
 
 -- ---------- match_attendances ----------
 -- quem apareceu e em qual time (1 = Brancos, 2 = Coloridos)
@@ -82,6 +84,7 @@ create table match_attendances (
 );
 
 create index idx_attendances_match on match_attendances(match_id);
+create index idx_attendances_player on match_attendances(player_id);
 
 -- ---------- gk_shifts ----------
 -- Rastreia quem estava no gol em cada momento. Revezamento orgânico:
@@ -113,6 +116,10 @@ create table match_events (
 
 create index idx_events_match on match_events(match_id);
 create index idx_events_player on match_events(player_id);
+-- Lookups frequentes: eventos por tipo dentro da partida, e eventos
+-- cronológicos do jogador
+create index idx_events_match_type on match_events(match_id, event_type);
+create index idx_events_player_time on match_events(player_id, event_timestamp desc);
 
 -- ---------- player_match_results ----------
 -- Linha-resumo por jogador por partida: soma dos eventos + vitória/empate/derrota
@@ -231,38 +238,83 @@ alter table player_match_results  enable row level security;
 alter table match_edit_log        enable row level security;
 alter table mvp_votes             enable row level security;
 
--- Política simples: qualquer authenticated user pode tudo.
--- (Se quiser abrir leitura pública pro grupo ver o ranking, crie
--- políticas separadas de SELECT com `to anon` ou `to public`.)
-do $$
-declare t text;
-begin
-  for t in
-    select unnest(array[
-      'players','seasons','matches','match_attendances',
-      'gk_shifts','match_events','player_match_results','match_edit_log','mvp_votes'
-    ])
-  loop
-    execute format(
-      'create policy "auth_all_%1$s" on %1$s for all to authenticated using (true) with check (true)',
-      t
-    );
-  end loop;
-end $$;
+-- Políticas granulares para multi-admin.
+-- Princípio: leitura autenticada ampla; escrita restrita a admin; dados
+-- de voto/auditoria são pessoais e append-only.
 
--- RLS para admin — permite update em matches FINISHED se user.is_admin
-create policy "admin_update_finished_match" on matches
-  for update
-  to authenticated
-  using (
-    status = 'FINISHED'
-    and exists (
-      select 1 from players
-      where players.id = auth.uid()
-      and is_admin = true
-    )
-  )
-  with check (true);
+-- Helper: é admin?
+create or replace function is_current_user_admin() returns boolean as $$
+  select exists (
+    select 1 from players
+    where id = auth.uid() and is_admin = true
+  );
+$$ language sql stable security definer;
+
+-- ----- players -----
+create policy "players_read"   on players for select to authenticated using (true);
+create policy "players_insert" on players for insert to authenticated
+  with check (is_current_user_admin());
+create policy "players_update" on players for update to authenticated
+  using (is_current_user_admin()) with check (true);
+create policy "players_delete" on players for delete to authenticated
+  using (is_current_user_admin());
+
+-- Blindagem contra auto-promoção: is_admin só pode ser alterado via
+-- service_role (SQL editor, migrações). PostgREST (JS client) fica barrado.
+revoke update on players from authenticated;
+grant  update (name, position, skill_level, active) on players to authenticated;
+
+-- ----- seasons -----
+create policy "seasons_read"  on seasons for select to authenticated using (true);
+create policy "seasons_write" on seasons for all    to authenticated
+  using (is_current_user_admin()) with check (is_current_user_admin());
+
+-- ----- matches -----
+create policy "matches_read"   on matches for select to authenticated using (true);
+create policy "matches_insert" on matches for insert to authenticated
+  with check (is_current_user_admin());
+create policy "matches_update" on matches for update to authenticated
+  using (is_current_user_admin()) with check (true);
+create policy "matches_delete" on matches for delete to authenticated
+  using (is_current_user_admin());
+
+-- ----- match_attendances -----
+create policy "attendances_read"  on match_attendances for select to authenticated using (true);
+create policy "attendances_write" on match_attendances for all    to authenticated
+  using (is_current_user_admin()) with check (is_current_user_admin());
+
+-- ----- gk_shifts -----
+create policy "gk_shifts_read"  on gk_shifts for select to authenticated using (true);
+create policy "gk_shifts_write" on gk_shifts for all    to authenticated
+  using (is_current_user_admin()) with check (is_current_user_admin());
+
+-- ----- match_events -----
+create policy "events_read"  on match_events for select to authenticated using (true);
+create policy "events_write" on match_events for all    to authenticated
+  using (is_current_user_admin()) with check (is_current_user_admin());
+
+-- ----- player_match_results -----
+create policy "pmr_read"  on player_match_results for select to authenticated using (true);
+create policy "pmr_write" on player_match_results for all    to authenticated
+  using (is_current_user_admin()) with check (is_current_user_admin());
+
+-- ----- match_edit_log -----
+-- Admin lê, admin insere como si mesmo. Ninguém atualiza ou deleta.
+create policy "edit_log_read"   on match_edit_log for select to authenticated
+  using (is_current_user_admin());
+create policy "edit_log_insert" on match_edit_log for insert to authenticated
+  with check (is_current_user_admin() and admin_id = auth.uid());
+
+-- ----- mvp_votes -----
+-- Qualquer autenticado lê (pros resultados serem públicos para o grupo),
+-- mas cada um só escreve o próprio voto.
+create policy "mvp_votes_read"   on mvp_votes for select to authenticated using (true);
+create policy "mvp_votes_insert" on mvp_votes for insert to authenticated
+  with check (voting_user_id = auth.uid());
+create policy "mvp_votes_update" on mvp_votes for update to authenticated
+  using (voting_user_id = auth.uid()) with check (voting_user_id = auth.uid());
+create policy "mvp_votes_delete" on mvp_votes for delete to authenticated
+  using (voting_user_id = auth.uid());
 
 -- ---------- HELPER FUNCTIONS ----------
 
