@@ -26,11 +26,14 @@ export const OUTCOME_WEIGHTS: Record<MatchOutcome, number> = {
 
 export const MVP_BONUS = 4.0;
 
-// --- Match rating (Sofascore-style, 4.0 to 10.0) ---
-export const RATING_BASE = 6.0;
-export const RATING_MULTIPLIER = 0.25;  // each point moves rating by 0.25
-export const RATING_MIN = 4.0;
-export const RATING_MAX = 10.0;
+// --- Match rating (star scale, 0.0 to 5.0) ---
+// The rating maps raw match points directly to stars. No floor — a player
+// who contributes nothing (or loses badly) can land at 0.0, and the progression
+// is linear from there until the 5.0 cap.
+export const RATING_BASE = 0.0;
+export const RATING_MULTIPLIER = 0.2;   // 1 pt ≈ 0.2 stars
+export const RATING_MIN = 0.0;
+export const RATING_MAX = 5.0;
 
 /** Sum of raw event points for a player in one match. */
 export function sumEventPoints(events: MatchEvent[]): number {
@@ -38,8 +41,8 @@ export function sumEventPoints(events: MatchEvent[]): number {
 }
 
 /**
- * Convert a bag of match points into a Sofascore-style rating.
- * Starts at 6.0, each point moves rating by RATING_MULTIPLIER, clamped.
+ * Convert a bag of match points into a star rating.
+ * Starts at 0.0 and grows linearly; clamped into [0.0, 5.0].
  */
 export function computeMatchRating(matchPoints: number): number {
   const raw = RATING_BASE + matchPoints * RATING_MULTIPLIER;

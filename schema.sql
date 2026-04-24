@@ -164,17 +164,19 @@ select
   count(*) filter (where pmr.outcome = 'DRAW') as draws,
   count(*) filter (where pmr.outcome = 'LOSS') as losses,
   count(*) filter (where m.mvp_player_id = p.id) as mvp_count,
-  -- Dynamic rating calculation (1.0–5.0 scale)
+  -- Dynamic rating calculation (0.0–5.0 scale)
+  -- Anchored on the player's average match rating (already 0–5),
+  -- then nudged by league-relative performance, experience, and MVPs.
   (case
-     when count(distinct pmr.match_id) = 0 then 3.0::numeric
+     when count(distinct pmr.match_id) = 0 then 0.0::numeric
      else greatest(
-       1.0::numeric,
+       0.0::numeric,
        least(
          5.0::numeric,
          (
-           3.0::numeric
-           + ((coalesce(avg(pmr.total_points), 0) - coalesce(league_avg.league_avg_points, 0)) * 0.15::numeric)
-           + least((count(distinct pmr.match_id)::numeric / 10), 0.5::numeric)
+           coalesce(avg(pmr.match_rating), 0)::numeric
+           + ((coalesce(avg(pmr.total_points), 0) - coalesce(season_league_avg.league_avg_points, 0)) * 0.05::numeric)
+           + least((count(distinct pmr.match_id)::numeric / 20), 0.5::numeric)
            + least((count(*) filter (where m.mvp_player_id = p.id)::numeric * 0.15::numeric), 0.5::numeric)
          )
        )
@@ -343,15 +345,17 @@ begin
       + coalesce(pe.event_points, 0)::numeric
       + case when v_mvp_player_id = pe.player_id then 4.0::numeric else 0::numeric end
     )::numeric(5,2) as total_points,
-    (
-      case
-        when v_score_a = v_score_b then 1.5::numeric
-        when (pe.team = 1 and v_score_a > v_score_b) or (pe.team = 2 and v_score_b > v_score_a) then 5.0::numeric
-        else -1.0::numeric
-      end
-      + coalesce(pe.event_points, 0)::numeric
-      + case when v_mvp_player_id = pe.player_id then 4.0::numeric else 0::numeric end
-    ) / greatest(count(*) over (), 1) as match_rating,
+    greatest(0.0::numeric, least(5.0::numeric,
+      (
+        case
+          when v_score_a = v_score_b then 1.5::numeric
+          when (pe.team = 1 and v_score_a > v_score_b) or (pe.team = 2 and v_score_b > v_score_a) then 5.0::numeric
+          else -1.0::numeric
+        end
+        + coalesce(pe.event_points, 0)::numeric
+        + case when v_mvp_player_id = pe.player_id then 4.0::numeric else 0::numeric end
+      ) * 0.2::numeric
+    )) as match_rating,
     coalesce(pe.goals, 0)::int,
     coalesce(pe.assists, 0)::int,
     coalesce(pe.saves, 0)::int

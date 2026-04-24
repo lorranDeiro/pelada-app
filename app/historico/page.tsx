@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppNav } from '@/components/app-nav';
 import { RequireAuth } from '@/components/require-auth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
+import { isAdmin } from '@/lib/admin';
 import type { Match } from '@/lib/types';
 
 export default function HistoricoPage() {
@@ -22,15 +25,15 @@ export default function HistoricoPage() {
 function HistoricoContent() {
   const [matches, setMatches] = useState<Match[] | null>(null);
   const [isClearing, setIsClearing] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [admin, setAdmin] = useState(false);
 
   useEffect(() => {
     (async () => {
       const { data: auth } = await supabase.auth.getUser();
       if (auth.user?.id) {
-        setUserId(auth.user.id);
+        setAdmin(await isAdmin(auth.user.id));
       }
-      
+
       const { data, error } = await supabase
         .from('matches')
         .select('*')
@@ -119,23 +122,35 @@ function HistoricoContent() {
         <ul className="space-y-2">
           {matches.map((m) => (
             <li key={m.id}>
-              <Link href={`/partida/${m.id}`} className="block">
-                <Card className="transition-colors hover:bg-accent">
-                  <CardContent className="flex items-center gap-3 p-3">
-                    <div className="flex-1 text-sm">
+              <Card className="transition-colors hover:bg-accent">
+                <CardContent className="flex items-center gap-3 p-3">
+                  <Link href={`/partida/${m.id}`} className="min-w-0 flex-1">
+                    <div className="text-sm">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {formatDate(m.played_at)}
-                        </span>
+                        <span className="font-medium">{formatDate(m.played_at)}</span>
                         <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
                       </div>
                       <div className="mt-0.5 tabular-nums text-muted-foreground">
                         {m.team_a_name} {m.score_a} × {m.score_b} {m.team_b_name}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                  </Link>
+                  {admin && m.status === 'FINISHED' && (
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      title="Editar partida (VAR)"
+                    >
+                      <Link href={`/admin/partidas/${m.id}/edit`}>
+                        <Pencil className="size-3.5" />
+                        Editar
+                      </Link>
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
             </li>
           ))}
         </ul>

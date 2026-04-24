@@ -1,15 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppNav } from '@/components/app-nav';
 import { RequireAuth } from '@/components/require-auth';
 import { PlayerDialog } from '@/components/player-dialog';
+import { PlayerFifaCard } from '@/components/player-fifa-card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { StarRating } from '@/components/ui-patterns';
+import { getPlayerBadges } from '@/lib/achievements';
 import { supabase } from '@/lib/supabase';
 import type { Player, SeasonStats } from '@/lib/types';
 
@@ -27,6 +35,10 @@ function ElencoContent() {
   const [seasonStats, setSeasonStats] = useState<Map<string, SeasonStats>>(new Map());
   const [editing, setEditing] = useState<Player | null>(null);
   const [creating, setCreating] = useState(false);
+  const [cardPlayerId, setCardPlayerId] = useState<string | null>(null);
+
+  const allStatsArray = useMemo(() => Array.from(seasonStats.values()), [seasonStats]);
+  const cardStats = cardPlayerId ? seasonStats.get(cardPlayerId) ?? null : null;
 
   const load = useCallback(async () => {
     // Fetch players
@@ -144,6 +156,20 @@ function ElencoContent() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setCardPlayerId(p.id)}
+                        disabled={!stats || stats.matches_played === 0}
+                        aria-label="Ver carta"
+                        title={
+                          !stats || stats.matches_played === 0
+                            ? 'Sem partidas na temporada'
+                            : 'Ver carta'
+                        }
+                      >
+                        <Eye className="size-4" />
+                      </Button>
+                      <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => toggleActive(p)}
@@ -193,6 +219,23 @@ function ElencoContent() {
           load();
         }}
       />
+
+      <Dialog
+        open={cardPlayerId !== null}
+        onOpenChange={(o) => !o && setCardPlayerId(null)}
+      >
+        <DialogContent className="bg-transparent p-0 ring-0 sm:max-w-xs">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Carta do jogador</DialogTitle>
+          </DialogHeader>
+          {cardStats && (
+            <PlayerFifaCard
+              stats={cardStats}
+              badges={getPlayerBadges(cardStats, allStatsArray)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
