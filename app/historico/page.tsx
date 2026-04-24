@@ -1,14 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppNav } from '@/components/app-nav';
 import { RequireAuth } from '@/components/require-auth';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { MatchRow } from '@/components/match-row';
 import { supabase } from '@/lib/supabase';
 import { isAdmin } from '@/lib/admin';
 import type { Match } from '@/lib/types';
@@ -60,7 +56,6 @@ function HistoricoContent() {
         return;
       }
 
-      // Delete each match individually to respect RLS policies
       const matchIds = matches.map(m => m.id);
       let deletedCount = 0;
       let errorOccurred = false;
@@ -70,7 +65,7 @@ function HistoricoContent() {
           .from('matches')
           .delete()
           .eq('id', matchId);
-        
+
         if (error) {
           console.error(`Error deleting match ${matchId}:`, error);
           errorOccurred = true;
@@ -101,7 +96,7 @@ function HistoricoContent() {
     <main className="mx-auto w-full max-w-3xl flex-1 space-y-4 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Histórico</h1>
-        {matches.length > 0 && (
+        {matches.length > 0 && admin && (
           <button
             onClick={handleClearHistory}
             disabled={isClearing}
@@ -113,59 +108,16 @@ function HistoricoContent() {
       </div>
 
       {matches.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Nenhuma partida ainda.
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-fs-border bg-fs-surface py-8 text-center text-sm text-fs-text-dim">
+          Nenhuma partida ainda.
+        </div>
       ) : (
-        <ul className="space-y-2">
+        <div className="overflow-hidden rounded-lg border border-fs-border bg-fs-surface">
           {matches.map((m) => (
-            <li key={m.id}>
-              <Card className="transition-colors hover:bg-accent">
-                <CardContent className="flex items-center gap-3 p-3">
-                  <Link href={`/partida/${m.id}`} className="min-w-0 flex-1">
-                    <div className="text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{formatDate(m.played_at)}</span>
-                        <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
-                      </div>
-                      <div className="mt-0.5 tabular-nums text-muted-foreground">
-                        {m.team_a_name} {m.score_a} × {m.score_b} {m.team_b_name}
-                      </div>
-                    </div>
-                  </Link>
-                  {admin && m.status === 'FINISHED' && (
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="gap-1"
-                      title="Editar partida (VAR)"
-                    >
-                      <Link href={`/admin/partidas/${m.id}/edit`}>
-                        <Pencil className="size-3.5" />
-                        Editar
-                      </Link>
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </li>
+            <MatchRow key={m.id} match={m} showAdminEdit={admin} />
           ))}
-        </ul>
+        </div>
       )}
     </main>
   );
-}
-
-function statusVariant(status: Match['status']): 'default' | 'secondary' | 'outline' {
-  if (status === 'FINISHED') return 'secondary';
-  if (status === 'LIVE') return 'default';
-  return 'outline';
-}
-
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
 }
