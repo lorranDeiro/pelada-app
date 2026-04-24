@@ -7,8 +7,16 @@ import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PlayerAvatar } from '@/components/player-avatar';
 import { getCardTier, type Badge as BadgeType } from '@/lib/achievements';
 import type { SeasonStats } from '@/lib/types';
+
+const TIER_RING: Record<'bronze' | 'silver' | 'gold' | 'legend', string> = {
+  bronze: 'ring-amber-900',
+  silver: 'ring-slate-400',
+  gold:   'ring-yellow-500',
+  legend: 'ring-fuchsia-400',
+};
 
 interface PlayerFifaCardProps {
   stats: SeasonStats;
@@ -77,18 +85,25 @@ export function PlayerFifaCard({ stats, badges, hideDownload }: PlayerFifaCardPr
         ref={cardRef}
         className={`relative w-full max-w-xs overflow-hidden rounded-xl border-2 ${style.borderColor} bg-gradient-to-b ${style.gradient} p-4 shadow-2xl`}
       >
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col items-start">
-            <div className={`text-4xl font-black ${style.accentColor}`}>
+            <div className={`text-4xl font-black leading-none ${style.accentColor}`}>
               {(stats.dynamic_rating ?? 0).toFixed(1)}
             </div>
-            <div className={`text-xs font-semibold uppercase tracking-wide ${style.accentColor}`}>
+            <div className={`mt-1 text-xs font-semibold uppercase tracking-wide ${style.accentColor}`}>
               {stats.position === 'GOLEIRO_FIXO' ? 'GK' : 'ST'}
             </div>
           </div>
+          <PlayerAvatar
+            name={stats.name}
+            photoUrl={stats.photo_url}
+            size={80}
+            ringClass={TIER_RING[tier]}
+            className="shadow-lg"
+          />
         </div>
 
-        <div className="my-4 text-center">
+        <div className="my-3 text-center">
           <h2 className={`text-xl font-black ${style.textColor} truncate`}>
             {stats.name}
           </h2>

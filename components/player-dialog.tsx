@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -20,7 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PlayerAvatar } from '@/components/player-avatar';
 import { supabase } from '@/lib/supabase';
+import { deletePlayerPhoto, uploadPlayerPhoto } from '@/lib/photos';
 import type { Player, PlayerPosition } from '@/lib/types';
 
 interface Props {
@@ -37,14 +40,53 @@ export function PlayerDialog({ player, open, onOpenChange, onSaved }: Props) {
   const [position, setPosition] = useState<PlayerPosition>('JOGADOR');
   const [skill, setSkill] = useState<SkillLevel>(3);
   const [saving, setSaving] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (open) {
       setName(player?.name ?? '');
       setPosition(player?.position ?? 'JOGADOR');
       setSkill((player?.skill_level ?? 3) as SkillLevel);
+      setPhotoUrl(player?.photo_url ?? null);
     }
   }, [open, player]);
+
+  async function handlePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !player) return;
+    setUploading(true);
+    try {
+      const url = await uploadPlayerPhoto(player.id, file);
+      setPhotoUrl(url);
+      toast.success('Foto atualizada');
+    } catch (err) {
+      toast.error('Erro ao enviar foto', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handlePhotoRemove() {
+    if (!player || !photoUrl) return;
+    if (!confirm('Remover a foto do jogador?')) return;
+    setUploading(true);
+    try {
+      await deletePlayerPhoto(player.id, photoUrl);
+      setPhotoUrl(null);
+      toast.success('Foto removida');
+    } catch (err) {
+      toast.error('Erro ao remover', {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,6 +119,45 @@ export function PlayerDialog({ player, open, onOpenChange, onSaved }: Props) {
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {player && (
+            <div className="flex items-center gap-3">
+              <PlayerAvatar name={name || player.name} photoUrl={photoUrl} size={64} />
+              <div className="flex flex-col gap-1">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handlePhotoPick}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="gap-1"
+                >
+                  <Upload className="size-3.5" />
+                  {uploading ? 'Enviando…' : photoUrl ? 'Trocar foto' : 'Enviar foto'}
+                </Button>
+                {photoUrl && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handlePhotoRemove}
+                    disabled={uploading}
+                    className="gap-1 text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Remover
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="name">Nome</Label>
             <Input

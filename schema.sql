@@ -26,13 +26,15 @@ create type match_status as enum ('DRAFT', 'LIVE', 'FINISHED');
 
 -- ---------- players ----------
 create table players (
-  id          uuid primary key default uuid_generate_v4(),
-  name        text not null,
-  position    player_position not null default 'JOGADOR',
-  skill_level int  not null check (skill_level between 1 and 5),
-  is_admin    boolean not null default false,
-  active      boolean not null default true,
-  created_at  timestamptz not null default now()
+  id               uuid primary key default uuid_generate_v4(),
+  name             text not null,
+  position         player_position not null default 'JOGADOR',
+  skill_level      int  not null check (skill_level between 1 and 5),
+  is_admin         boolean not null default false,
+  active           boolean not null default true,
+  photo_url        text,
+  photo_updated_at timestamptz,
+  created_at       timestamptz not null default now()
 );
 
 create index idx_players_active on players(active) where active;
@@ -160,6 +162,7 @@ select
   p.id                      as player_id,
   p.name,
   p.position,
+  p.photo_url,
   m.season_id,
   count(distinct pmr.match_id)           as matches_played,
   coalesce(sum(pmr.total_points), 0)     as total_points,
@@ -194,7 +197,7 @@ left join player_match_results pmr on pmr.player_id = p.id
 left join matches m                 on m.id = pmr.match_id
 left join season_league_avg         on season_league_avg.season_id = m.season_id
 where p.active
-group by p.id, p.name, p.position, m.season_id, season_league_avg.league_avg_points;
+group by p.id, p.name, p.position, p.photo_url, m.season_id, season_league_avg.league_avg_points;
 
 -- ---------- match_edit_log ----------
 -- Audit trail para mudanças em partidas finalizadas

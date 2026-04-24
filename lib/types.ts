@@ -26,6 +26,8 @@ export interface Player {
   position: PlayerPosition;
   skill_level: 1 | 2 | 3 | 4 | 5;
   active: boolean;
+  photo_url: string | null;
+  photo_updated_at: string | null;
   created_at: string;
 }
 
@@ -96,6 +98,7 @@ export interface SeasonStats {
   player_id: string;
   name: string;
   position: PlayerPosition;
+  photo_url: string | null;
   season_id: string;
   matches_played: number;
   total_points: number;
