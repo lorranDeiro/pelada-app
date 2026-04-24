@@ -5,6 +5,42 @@
 -- =====================================================================
 
 -- -------------------------------------------------------------------
+-- 0) Pré-requisitos — colunas e tabelas que podem não ter sido
+--    aplicadas em bancos antigos (o CREATE TABLE original em schema.sql
+--    já incluía estas, mas bancos pré-existentes não ganharam via ALTER).
+-- -------------------------------------------------------------------
+ALTER TABLE players
+  ADD COLUMN IF NOT EXISTS is_admin boolean NOT NULL DEFAULT false;
+
+CREATE INDEX IF NOT EXISTS idx_players_admin
+  ON players(is_admin) WHERE is_admin;
+
+CREATE TABLE IF NOT EXISTS match_edit_log (
+  id              uuid primary key default uuid_generate_v4(),
+  match_id        uuid not null references matches(id) on delete cascade,
+  admin_id        uuid,
+  action          text not null,
+  payload_before  jsonb,
+  payload_after   jsonb,
+  created_at      timestamptz not null default now()
+);
+CREATE INDEX IF NOT EXISTS idx_edit_log_match ON match_edit_log(match_id);
+CREATE INDEX IF NOT EXISTS idx_edit_log_admin ON match_edit_log(admin_id);
+ALTER TABLE match_edit_log ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS mvp_votes (
+  id              uuid primary key default uuid_generate_v4(),
+  match_id        uuid not null references matches(id) on delete cascade,
+  voting_user_id  uuid not null,
+  vote_player_id  uuid not null references players(id) on delete cascade,
+  created_at      timestamptz not null default now(),
+  unique(match_id, voting_user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_mvp_votes_match ON mvp_votes(match_id);
+CREATE INDEX IF NOT EXISTS idx_mvp_votes_user  ON mvp_votes(voting_user_id);
+ALTER TABLE mvp_votes ENABLE ROW LEVEL SECURITY;
+
+-- -------------------------------------------------------------------
 -- 1) Novos índices
 -- -------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_events_match_type
@@ -135,6 +171,19 @@ CREATE POLICY "mvp_votes_update" ON mvp_votes FOR UPDATE TO authenticated
   USING (voting_user_id = auth.uid()) WITH CHECK (voting_user_id = auth.uid());
 CREATE POLICY "mvp_votes_delete" ON mvp_votes FOR DELETE TO authenticated
   USING (voting_user_id = auth.uid());
+
+-- -------------------------------------------------------------------
+-- 8) ATENÇÃO: promova-se a admin
+-- -------------------------------------------------------------------
+-- Se a coluna is_admin foi criada agora, todos jogadores estão com
+-- is_admin = false (default). Descomente a linha abaixo e troque o
+-- UUID pelo seu (o mesmo id do seu registro em auth.users E em players
+-- — se a convenção do app for players.id = auth.uid()).
+--
+--   UPDATE players SET is_admin = true WHERE id = 'SEU_UUID_AQUI';
+--
+-- Para descobrir seu auth user id:
+--   SELECT id, email FROM auth.users WHERE email = 'seu@email.com';
 
 -- -------------------------------------------------------------------
 -- Verificação: lista políticas ativas por tabela
