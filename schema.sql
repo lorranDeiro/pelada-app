@@ -326,7 +326,8 @@ create policy "mvp_votes_delete" on mvp_votes for delete to authenticated
 -- SECURITY DEFINER para bypassar RLS no DELETE/INSERT internos; o
 -- check de admin no topo evita virar backdoor.
 create or replace function recompute_match_results(p_match_id uuid)
-returns table(match_id uuid, updated_count int) as $$
+returns table(out_match_id uuid, updated_count int) as $$
+#variable_conflict use_column
 declare
   v_match_id uuid := p_match_id;
   v_season_id uuid;
@@ -349,7 +350,7 @@ begin
   end if;
 
   -- Delete existing player_match_results for this match
-  delete from player_match_results where match_id = v_match_id;
+  delete from player_match_results pmr where pmr.match_id = v_match_id;
   
   -- Re-insert player_match_results based on match_events
   -- (This is a simplified version — in production, you'd use the buildPlayerMatchResult logic)

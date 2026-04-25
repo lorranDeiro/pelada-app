@@ -2,10 +2,19 @@
 -- Fix: recompute_match_results roda como SECURITY DEFINER, com check
 -- de admin explícito no início. Resolve 400 causado por RLS bloqueando
 -- o DELETE/INSERT interno quando chamado via PostgREST.
+--
+-- Também renomeia a coluna OUT match_id → out_match_id (e adiciona
+-- #variable_conflict use_column) pra remover ambiguidade contra a
+-- coluna match_id de player_match_results no DELETE/WHERE interno.
 -- =====================================================================
 
+-- DROP necessário porque mudamos a assinatura de retorno (TABLE columns).
+-- CREATE OR REPLACE não aceita mudança de return type.
+DROP FUNCTION IF EXISTS recompute_match_results(uuid);
+
 CREATE OR REPLACE FUNCTION recompute_match_results(p_match_id uuid)
-RETURNS TABLE(match_id uuid, updated_count int) AS $$
+RETURNS TABLE(out_match_id uuid, updated_count int) AS $$
+#variable_conflict use_column
 DECLARE
   v_match_id uuid := p_match_id;
   v_season_id uuid;
@@ -29,7 +38,7 @@ BEGIN
     RAISE EXCEPTION 'Match not found: %', v_match_id;
   END IF;
 
-  DELETE FROM player_match_results WHERE match_id = v_match_id;
+  DELETE FROM player_match_results pmr WHERE pmr.match_id = v_match_id;
 
   WITH team_players AS (
     SELECT ma.player_id, ma.team, ma.match_id
