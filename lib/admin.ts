@@ -31,30 +31,25 @@ export async function isAdmin(userId: string | null | undefined): Promise<boolea
 }
 
 /**
- * Recalcula player_match_results para uma partida após edição
- * Chama a RPC no Supabase que deleta e reinsere os resultados
+ * Recalcula player_match_results para uma partida após edição.
+ * Chama a RPC recompute_match_results e lança erro com mensagem real
+ * do Postgres (em vez de retornar null e perder o motivo).
  */
-export async function recomputeMatch(matchId: string): Promise<{ updated_count: number } | null> {
-  try {
-    const { data, error } = await supabase.rpc('recompute_match_results', {
-      p_match_id: matchId,
-    });
+export async function recomputeMatch(matchId: string): Promise<{ updated_count: number }> {
+  const { data, error } = await supabase.rpc('recompute_match_results', {
+    p_match_id: matchId,
+  });
 
-    if (error) {
-      console.error('RPC recompute_match_results failed:', error);
-      return null;
-    }
-
-    // data é um array com um objeto {match_id, updated_count}
-    if (Array.isArray(data) && data.length > 0) {
-      return { updated_count: data[0].updated_count };
-    }
-
-    return null;
-  } catch (e) {
-    console.error('Error calling recompute_match_results:', e);
-    return null;
+  if (error) {
+    console.error('RPC recompute_match_results failed:', error);
+    throw new Error(error.message || error.details || 'Falha no recomputo');
   }
+
+  if (Array.isArray(data) && data.length > 0) {
+    return { updated_count: data[0].updated_count };
+  }
+
+  throw new Error('Recomputo retornou sem dados');
 }
 
 /**

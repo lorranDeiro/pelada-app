@@ -322,7 +322,9 @@ create policy "mvp_votes_delete" on mvp_votes for delete to authenticated
 -- ---------- HELPER FUNCTIONS ----------
 
 -- Recalcula player_match_results para uma partida (usado après edit)
--- Deleta PMR antigas e insere novas baseado em match_events
+-- Deleta PMR antigas e insere novas baseado em match_events.
+-- SECURITY DEFINER para bypassar RLS no DELETE/INSERT internos; o
+-- check de admin no topo evita virar backdoor.
 create or replace function recompute_match_results(p_match_id uuid)
 returns table(match_id uuid, updated_count int) as $$
 declare
@@ -331,11 +333,12 @@ declare
   v_score_a int;
   v_score_b int;
   v_mvp_player_id uuid;
-  v_team_a_players uuid[];
-  v_team_b_players uuid[];
   v_updated_count int := 0;
 begin
-  -- Fetch match details
+  if not is_current_user_admin() then
+    raise exception 'Permission denied: admin only';
+  end if;
+
   select m.season_id, m.score_a, m.score_b, m.mvp_player_id
   into v_season_id, v_score_a, v_score_b, v_mvp_player_id
   from matches m
@@ -420,5 +423,5 @@ begin
 
   return query select v_match_id, v_updated_count;
 end;
-$$ language plpgsql;
+$$ language plpgsql security definer;
 

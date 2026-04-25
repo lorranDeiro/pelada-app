@@ -213,10 +213,6 @@ function EditMatch({ matchId, adminId }: { matchId: string; adminId: string | nu
       }
 
       const result = await recomputeMatch(matchId);
-      if (!result) {
-        throw new Error('Falha no recomputo dos resultados');
-      }
-
       setOriginalMatch(match);
       toast.success('Alterações salvas', {
         description: `${result.updated_count} resultado(s) recalculados`,
