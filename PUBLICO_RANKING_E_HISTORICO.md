@@ -45,13 +45,15 @@ O Vercel fará deploy automaticamente.
 Dê esses links aos seus amigos:
 
 **Ranking Público:**
+
 ```
-https://seu-app.vercel.app/ranking
+https://pelada-app-eight.vercel.app/ranking
 ```
 
 **Histórico com Comentários:**
+
 ```
-https://seu-app.vercel.app/historico-publico
+https://pelada-app-eight.vercel.app/historico-publico
 ```
 
 ---
@@ -59,6 +61,7 @@ https://seu-app.vercel.app/historico-publico
 ## **🎯 O que seus Amigos Podem Fazer**
 
 ### **No `/ranking`**
+
 - ✓ Ver ranking completo da temporada
 - ✓ Ver notas médias de cada jogador
 - ✓ Ver gols, assistências, defesas
@@ -66,6 +69,7 @@ https://seu-app.vercel.app/historico-publico
 - ❌ Não podem editar nada
 
 ### **No `/historico-publico`**
+
 - ✓ Ver todas as partidas finalizadas
 - ✓ Ver resultados (placar + MVP)
 - ✓ Ver anotações do admin
@@ -80,14 +84,15 @@ https://seu-app.vercel.app/historico-publico
 ### **Fluxo Público → Admin**
 
 1. **Amigo deixa comentário** (sem fazer login)
+
    - Preenche: nome + comentário (email opcional)
    - Texto é salvo como **`is_verified = false`**
-
 2. **Admin vê comentário pendente** (você, logado)
+
    - Aparecem na dashboard (implementar depois)
    - Você aprova ou deleta
-
 3. **Comentário aprovado aparece publicamente**
+
    - Amigos veem o comentário
 
 ---
@@ -96,13 +101,13 @@ https://seu-app.vercel.app/historico-publico
 
 Todas as permissões estão configuradas no Supabase:
 
-| Ação | Público | Autenticado |
-|------|---------|-------------|
-| **Ver ranking** | ✓ | ✓ |
-| **Ver histórico** | ✓ (só FINISHED) | ✓ |
-| **Deixar comentário** | ✓ (precisa aproval) | ✓ (auto-approved) |
-| **Criar/editar partida** | ❌ | ✓ (apenas você) |
-| **Deletar comentário** | ❌ | ✓ (apenas admin) |
+| Ação                         | Público             | Autenticado        |
+| ------------------------------ | -------------------- | ------------------ |
+| **Ver ranking**          | ✓                   | ✓                 |
+| **Ver histórico**       | ✓ (só FINISHED)    | ✓                 |
+| **Deixar comentário**   | ✓ (precisa aproval) | ✓ (auto-approved) |
+| **Criar/editar partida** | ❌                   | ✓ (apenas você)  |
+| **Deletar comentário**  | ❌                   | ✓ (apenas admin)  |
 
 ---
 
@@ -110,12 +115,12 @@ Todas as permissões estão configuradas no Supabase:
 
 **Links para compartilhar com seus amigos:**
 
-| Página | URL | Descrição |
-|--------|-----|-----------|
-| Ranking | `/ranking` | Ranking da temporada atual |
-| Histórico | `/historico-publico` | Todas as partidas + comentários |
-| Home | `/` | Requer login |
-| Admin | `/elenco`, `/partida/nova`, etc | Requer login |
+| Página    | URL                                 | Descrição                      |
+| ---------- | ----------------------------------- | -------------------------------- |
+| Ranking    | `/ranking`                        | Ranking da temporada atual       |
+| Histórico | `/historico-publico`              | Todas as partidas + comentários |
+| Home       | `/`                               | Requer login                     |
+| Admin      | `/elenco`, `/partida/nova`, etc | Requer login                     |
 
 ---
 
@@ -141,6 +146,7 @@ await deleteMatchComment(commentId);
 ### **Dashboard de Comentários (Futuro)**
 
 Você pode criar uma página `/admin/comentarios` que mostra:
+
 - Comentários pendentes
 - Botão "Aprovar"
 - Botão "Deletar"
@@ -152,6 +158,7 @@ Você pode criar uma página `/admin/comentarios` que mostra:
 ### **Mudar cores das páginas públicas**
 
 Abra `app/ranking/page.tsx` ou `app/historico-publico/page.tsx` e procure por:
+
 - `from-green-600` → mude a cor
 - `bg-gray-800` → mude o fundo
 - `text-green-400` → mude o texto
@@ -171,6 +178,7 @@ Nos headers das páginas públicas, você pode adicionar:
 ### **Dados Exibidos no Ranking**
 
 Para cada jogador:
+
 - Ranking (posição)
 - Nome
 - Total de pontos ⭐
@@ -187,6 +195,7 @@ Para cada jogador:
 ## **🔄 Updates em Tempo Real**
 
 As páginas públicas atualizam automaticamente quando:
+
 - Você finaliza uma partida
 - Muda a temporada ativa
 - Um comentário é aprovado
@@ -198,20 +207,21 @@ Os amigos não precisam atualizar manualmente (NextJS recarrega dados).
 ## **🚀 Próximos Passos (Opcional)**
 
 1. **Dashboard Admin de Comentários**
+
    - Página em `/admin/comentarios`
    - Listar pendentes
    - Botões aprovar/deletar
-
 2. **Notificações**
+
    - Email quando alguém comenta
    - Popup no app
-
 3. **Filtros no Histórico**
+
    - Por jogador
    - Por time
    - Por período
-
 4. **Export de Dados**
+
    - CSV do ranking
    - PDF das partidas
 
@@ -239,4 +249,3 @@ R: Está fora do escopo deste passo. Podemos implementar depois se quiser.
 ## **📞 Dúvidas?**
 
 Tudo pronto para compartilhar! Qualquer dúvida, é só chamar. 🚀
-

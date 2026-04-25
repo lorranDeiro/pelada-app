@@ -15,7 +15,7 @@ export const EVENT_WEIGHTS: Record<EventType, number> = {
   CREATION:             1.0,
   MISTAKE_LEADING_GOAL: -3.0,
   OWN_GOAL:             -4.0,
-  GOAL_CONCEDED_GK:     -1.5,
+  GOAL_CONCEDED_GK:     -1.0,
 };
 
 export const OUTCOME_WEIGHTS: Record<MatchOutcome, number> = {
