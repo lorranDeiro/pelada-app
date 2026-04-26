@@ -73,23 +73,36 @@ DROP POLICY IF EXISTS "player_photos_upload_admin" ON storage.objects;
 DROP POLICY IF EXISTS "player_photos_update_admin" ON storage.objects;
 DROP POLICY IF EXISTS "player_photos_delete_admin" ON storage.objects;
 
+-- Policies inlinam o check de admin (em vez de chamar
+-- is_current_user_admin()) porque o search_path no contexto de RLS de
+-- storage.objects pode não incluir public, fazendo a função não ser
+-- resolvida e o upload falhar com 400.
 CREATE POLICY "player_photos_upload_admin" ON storage.objects
   FOR INSERT TO authenticated
   WITH CHECK (
     bucket_id = 'player-photos'
-    AND is_current_user_admin()
+    AND EXISTS (
+      SELECT 1 FROM public.players
+      WHERE id = auth.uid() AND is_admin = true
+    )
   );
 
 CREATE POLICY "player_photos_update_admin" ON storage.objects
   FOR UPDATE TO authenticated
   USING (
     bucket_id = 'player-photos'
-    AND is_current_user_admin()
+    AND EXISTS (
+      SELECT 1 FROM public.players
+      WHERE id = auth.uid() AND is_admin = true
+    )
   );
 
 CREATE POLICY "player_photos_delete_admin" ON storage.objects
   FOR DELETE TO authenticated
   USING (
     bucket_id = 'player-photos'
-    AND is_current_user_admin()
+    AND EXISTS (
+      SELECT 1 FROM public.players
+      WHERE id = auth.uid() AND is_admin = true
+    )
   );
