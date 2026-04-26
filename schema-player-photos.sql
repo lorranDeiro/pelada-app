@@ -9,6 +9,11 @@ ALTER TABLE players ADD COLUMN IF NOT EXISTS photo_url text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS photo_updated_at timestamptz;
 
 -- 2) Recriar a view v_player_season_stats incluindo p.photo_url
+--    DROP necessário: CREATE OR REPLACE VIEW só permite ADICIONAR colunas
+--    no final, não inserir no meio. Como photo_url entra entre position
+--    e season_id, a posição 4 muda → "cannot change name of view column".
+DROP VIEW IF EXISTS v_player_season_stats;
+
 CREATE OR REPLACE VIEW v_player_season_stats AS
 WITH season_league_avg AS (
   SELECT
