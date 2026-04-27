@@ -97,12 +97,15 @@ export async function fetchPlayerProgress(
     .select('match_rating,total_points,matches!inner(played_at,season_id)')
     .eq('player_id', playerId)
     .eq('matches.season_id', seasonId)
-    .order('played_at', { foreignTable: 'matches', ascending: false })
+    .order('played_at', { referencedTable: 'matches', ascending: false })
     .limit(limit);
 
   if (error) throw error;
 
-  const rows = (data ?? []) as Array<{
+  // Supabase tipa joins via FK como array, mas em runtime um match_id ->
+  // matches é to-one e retorna objeto. Cast via unknown para evitar o
+  // overlap-warning do TS sem mascarar bugs com `any`.
+  const rows = (data ?? []) as unknown as Array<{
     match_rating: number;
     total_points: number;
     matches: { played_at: string; season_id: string };
