@@ -118,7 +118,7 @@ export function ManualTeamSelector({
 
       {/* Main Grid */}
       <div className="grid grid-cols-3 gap-4">
-        {/* Equipa A - Brancos */}
+        {/* Equipa A - Escuros */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-bold text-text-primary">⚪ Equipa A</h3>

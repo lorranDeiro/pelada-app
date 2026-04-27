@@ -17,12 +17,18 @@ import {
 import { DataExport } from '@/components/data-export';
 import { PlayerFifaCard } from '@/components/player-fifa-card';
 import { RankingTable } from '@/components/ranking-table';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { PlayerRadarChart } from '@/components/charts/player-radar-chart';
+import { PlayerProgressChart } from '@/components/charts/player-progress-chart';
+import { SeasonOverviewChart } from '@/components/charts/season-overview-chart';
+import { buildRadarData } from '@/lib/player-charts';
 import { getPlayerBadges } from '@/lib/achievements';
 
 export default function PublicRankingPage() {
   const [stats, setStats] = useState<SeasonStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [seasonName, setSeasonName] = useState('');
+  const [seasonId, setSeasonId] = useState<string | null>(null);
   const [cardPlayerId, setCardPlayerId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const tableRef = useRef<HTMLDivElement | null>(null);
@@ -42,7 +48,10 @@ export default function PublicRankingPage() {
         .eq('active', true)
         .single();
 
-      if (seasonData) setSeasonName(seasonData.name);
+      if (seasonData) {
+        setSeasonName(seasonData.name);
+        setSeasonId(seasonData.id);
+      }
 
       const { data: rankingData } = await supabase
         .from('v_player_season_stats')
@@ -135,18 +144,71 @@ export default function PublicRankingPage() {
           </div>
         )}
 
+        {seasonId && stats.length > 0 && (
+          <section
+            className="mt-6 rounded-lg border border-fs-border bg-fs-surface p-4"
+            data-html-to-image-ignore="true"
+          >
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="text-sm font-semibold text-fs-text">
+                Visão geral da temporada
+              </h2>
+              <span className="text-[10px] uppercase tracking-wider text-fs-text-dim">
+                Gols · Assist. · Decisões
+              </span>
+            </div>
+            <SeasonOverviewChart seasonId={seasonId} />
+          </section>
+        )}
+
         <div className="mt-6 rounded-lg border border-fs-border bg-fs-surface px-4 py-3 text-xs text-fs-text-dim">
           <p>💡 Ranking público da temporada atual, atualizado em tempo real.</p>
         </div>
       </main>
 
       <Dialog open={cardPlayerId !== null} onOpenChange={(o) => !o && setCardPlayerId(null)}>
-        <DialogContent className="bg-transparent p-0 ring-0 sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader className="sr-only">
-            <DialogTitle>Carta do jogador</DialogTitle>
+            <DialogTitle>Detalhes do jogador</DialogTitle>
           </DialogHeader>
           {cardStats && (
-            <PlayerFifaCard stats={cardStats} badges={getPlayerBadges(cardStats, stats)} />
+            <Tabs defaultValue="card">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="card">Carta</TabsTrigger>
+                <TabsTrigger value="radar">Radar</TabsTrigger>
+                <TabsTrigger value="progress">Evolução</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="card">
+                <PlayerFifaCard
+                  stats={cardStats}
+                  badges={getPlayerBadges(cardStats, stats)}
+                />
+              </TabsContent>
+
+              <TabsContent value="radar">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    Jogador vs média da liga, normalizado pelo líder de cada métrica.
+                  </p>
+                  <PlayerRadarChart data={buildRadarData(cardStats, stats)} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="progress">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    Últimas 10 partidas — pontos (barras) e rating (linha).
+                  </p>
+                  {seasonId && (
+                    <PlayerProgressChart
+                      playerId={cardStats.player_id}
+                      seasonId={seasonId}
+                    />
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>

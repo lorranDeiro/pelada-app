@@ -84,7 +84,7 @@ export async function getFinishedMatches(filters?: HistoryFilters): Promise<Matc
     matches = matches.filter((m) => teamByMatch.has(m.id));
 
     if (filters.team !== 'all') {
-      const targetTeam: 1 | 2 = filters.team === 'brancos' ? 1 : 2;
+      const targetTeam: 1 | 2 = filters.team === 'escuros' ? 1 : 2;
       matches = matches.filter((m) => teamByMatch.get(m.id) === targetTeam);
     }
   }

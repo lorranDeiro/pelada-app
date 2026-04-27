@@ -16,6 +16,13 @@
 
 import type { RankedPlayer, PlayerPosition } from './types';
 
+type SkillLevel = 1 | 2 | 3 | 4 | 5;
+/** Average per-match points by skill_level, derived from veterans in pool. */
+type SkillBaseline = Partial<Record<SkillLevel, number>>;
+
+/** Min matches to count a player as a veteran when computing the baseline. */
+const VETERAN_THRESHOLD = 3;
+
 export interface BalancedTeams {
   teamA: RankedPlayer[];
   teamB: RankedPlayer[];
@@ -39,11 +46,47 @@ export interface BalancerOptions {
 
 // ---------- helpers ----------
 
-function compositeStrength(p: RankedPlayer, rankingWeight: number): number {
-  const avgSeasonPoints =
-    p.matches_played_season > 0
-      ? p.season_points / p.matches_played_season
-      : 0;
+/**
+ * For each skill_level, compute the average points/match of *veterans*
+ * (≥ VETERAN_THRESHOLD matches) currently in the pool. Used to impute a
+ * realistic strength for rookies (matches_played_season === 0) — without
+ * this, a "skill 4 rookie" gets a flat 8.0 while a "skill 4 veteran" might
+ * actually average 6.5, dragging team balance off.
+ */
+function computeSkillBaseline(players: RankedPlayer[]): SkillBaseline {
+  const buckets = new Map<SkillLevel, { sum: number; count: number }>();
+  for (const p of players) {
+    if (p.matches_played_season >= VETERAN_THRESHOLD) {
+      const avg = p.season_points / p.matches_played_season;
+      const skill = p.skill_level as SkillLevel;
+      const acc = buckets.get(skill) ?? { sum: 0, count: 0 };
+      acc.sum += avg;
+      acc.count += 1;
+      buckets.set(skill, acc);
+    }
+  }
+  const out: SkillBaseline = {};
+  for (const [skill, { sum, count }] of buckets) {
+    out[skill] = sum / count;
+  }
+  return out;
+}
+
+function compositeStrength(
+  p: RankedPlayer,
+  rankingWeight: number,
+  baseline?: SkillBaseline
+): number {
+  // Rookie: zero matches in the season — no ranking signal at all. Impute
+  // the league average for veterans at the same skill_level. If the league
+  // has no veterans at that level yet (start of season), fall back to the
+  // manual scale.
+  if (p.matches_played_season === 0) {
+    const imputed = baseline?.[p.skill_level as SkillLevel];
+    return imputed ?? p.skill_level * 2;
+  }
+
+  const avgSeasonPoints = p.season_points / p.matches_played_season;
 
   // How much we trust the ranking vs. the manual skill. Ramps up over
   // the first 5 matches of the season.
@@ -55,8 +98,12 @@ function compositeStrength(p: RankedPlayer, rankingWeight: number): number {
   return trust * avgSeasonPoints + (1 - trust) * skillPoints;
 }
 
-function teamStrength(team: RankedPlayer[], rankingWeight: number): number {
-  return team.reduce((s, p) => s + compositeStrength(p, rankingWeight), 0);
+function teamStrength(
+  team: RankedPlayer[],
+  rankingWeight: number,
+  baseline?: SkillBaseline
+): number {
+  return team.reduce((s, p) => s + compositeStrength(p, rankingWeight, baseline), 0);
 }
 
 function countPosition(team: RankedPlayer[], pos: PlayerPosition): number {
@@ -93,10 +140,11 @@ function mulberry32(seed: number) {
 function scoreDivision(
   teamA: RankedPlayer[],
   teamB: RankedPlayer[],
-  rankingWeight: number
+  rankingWeight: number,
+  baseline?: SkillBaseline
 ): { cost: number; strengthA: number; strengthB: number } {
-  const strengthA = teamStrength(teamA, rankingWeight);
-  const strengthB = teamStrength(teamB, rankingWeight);
+  const strengthA = teamStrength(teamA, rankingWeight, baseline);
+  const strengthB = teamStrength(teamB, rankingWeight, baseline);
 
   // base cost: how unbalanced the two teams are in raw strength
   let cost = Math.abs(strengthA - strengthB);
@@ -148,6 +196,7 @@ export function balanceTeams(
 
   const teamASize = options.teamASize ?? Math.floor(n / 2);
   const rng = mulberry32(seed);
+  const baseline = computeSkillBaseline(players);
 
   let best: BalancedTeams | null = null;
 
@@ -158,7 +207,8 @@ export function balanceTeams(
     const { cost, strengthA, strengthB } = scoreDivision(
       teamA,
       teamB,
-      rankingWeight
+      rankingWeight,
+      baseline
     );
 
     const gkA = countPosition(teamA, 'GOLEIRO_FIXO');

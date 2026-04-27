@@ -59,7 +59,7 @@ create table matches (
   id            uuid primary key default uuid_generate_v4(),
   season_id     uuid not null references seasons(id) on delete cascade,
   played_at     date not null,
-  team_a_name   text not null default 'Brancos',
+  team_a_name   text not null default 'Escuros',
   team_b_name   text not null default 'Coloridos',
   score_a       int  not null default 0,
   score_b       int  not null default 0,
@@ -75,7 +75,7 @@ create index idx_matches_played_at on matches(played_at desc);
 create index idx_matches_season_status on matches(season_id, status) where status = 'FINISHED';
 
 -- ---------- match_attendances ----------
--- quem apareceu e em qual time (1 = Brancos, 2 = Coloridos)
+-- quem apareceu e em qual time (1 = Escuros, 2 = Coloridos)
 create table match_attendances (
   id         uuid primary key default uuid_generate_v4(),
   match_id   uuid not null references matches(id) on delete cascade,

@@ -15,7 +15,7 @@ import { Filter, RotateCcw } from 'lucide-react';
 
 export interface HistoryFilters {
   playerId: string | null;
-  team: 'all' | 'brancos' | 'coloridos';
+  team: 'all' | 'escuros' | 'coloridos';
   startDate: string;
   endDate: string;
 }
@@ -47,7 +47,7 @@ export function HistoryFiltersComponent({ players, onFilterChange }: HistoryFilt
   const handleTeamChange = (value: string) => {
     const newFilters = {
       ...filters,
-      team: value as 'all' | 'brancos' | 'coloridos',
+      team: value as 'all' | 'escuros' | 'coloridos',
     };
     setFilters(newFilters);
     onFilterChange(newFilters);
@@ -146,10 +146,10 @@ export function HistoryFiltersComponent({ players, onFilterChange }: HistoryFilt
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os times</SelectItem>
-                <SelectItem value="brancos">
+                <SelectItem value="escuros">
                   <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-white border border-gray-400 rounded-full"></span>
-                    Brancos
+                    <span className="w-2 h-2 bg-slate-700 border border-slate-500 rounded-full"></span>
+                    Escuros
                   </span>
                 </SelectItem>
                 <SelectItem value="coloridos">

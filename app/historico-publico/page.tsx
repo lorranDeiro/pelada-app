@@ -119,7 +119,7 @@ export default function PublicHistoryPage() {
       filtered = filtered.filter((m) => teamByMatch.get(m.id)?.has(pid));
 
       if (newFilters.team !== 'all') {
-        const targetTeam: 1 | 2 = newFilters.team === 'brancos' ? 1 : 2;
+        const targetTeam: 1 | 2 = newFilters.team === 'escuros' ? 1 : 2;
         filtered = filtered.filter(
           (m) => teamByMatch.get(m.id)?.get(pid) === targetTeam
         );

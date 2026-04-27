@@ -17,6 +17,7 @@ import { getOrCreateActiveSeason } from '@/lib/season';
 import { assignTeamsManually } from '@/lib/team-selector';
 import { supabase } from '@/lib/supabase';
 import { balanceTeams, type BalancedTeams } from '@/lib/team-balancer';
+import { WinProbabilityBar } from '@/components/win-probability-bar';
 import type { Player, RankedPlayer } from '@/lib/types';
 
 type Step = 'checkin' | 'modo-selecao' | 'sorteio' | 'formacao-manual';
@@ -434,8 +435,13 @@ function TeamsPreview({
         <Badge variant="outline">gap {gap.toFixed(2)}</Badge>
       </div>
 
+      <WinProbabilityBar
+        strengthA={teams.debug.strengthA}
+        strengthB={teams.debug.strengthB}
+      />
+
       <div className="grid gap-3 sm:grid-cols-2">
-        <TeamCard name="Brancos" players={teams.teamA} strength={teams.debug.strengthA} />
+        <TeamCard name="Escuros" players={teams.teamA} strength={teams.debug.strengthA} />
         <TeamCard
           name="Coloridos"
           players={teams.teamB}
