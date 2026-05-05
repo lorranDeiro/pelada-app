@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Player, RankedPlayer } from './types';
+import type { PlayerSeasonRow } from './player-odds';
 
 export async function fetchActivePlayers(): Promise<Player[]> {
   const { data, error } = await supabase
@@ -44,5 +45,31 @@ export async function fetchRankedPlayers(
     ...p,
     season_points: statsByPlayer.get(p.id)?.season_points ?? 0,
     matches_played_season: statsByPlayer.get(p.id)?.matches_played_season ?? 0,
+  }));
+}
+
+/**
+ * Stats agregados (gols, assistências, partidas) pra construir o contexto
+ * de odds. Usa a mesma view do ranking, mas só os campos necessários.
+ */
+export async function fetchPlayerSeasonStatsRows(
+  seasonId: string,
+  playerIds: string[]
+): Promise<PlayerSeasonRow[]> {
+  if (playerIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('v_player_season_stats')
+    .select('player_id, goals, assists, matches_played')
+    .eq('season_id', seasonId)
+    .in('player_id', playerIds);
+
+  if (error) throw error;
+
+  return (data ?? []).map((r) => ({
+    player_id: r.player_id as string,
+    goals: Number(r.goals ?? 0),
+    assists: Number(r.assists ?? 0),
+    matches_played: Number(r.matches_played ?? 0),
   }));
 }

@@ -53,7 +53,7 @@ export interface BalancerOptions {
  * this, a "skill 4 rookie" gets a flat 8.0 while a "skill 4 veteran" might
  * actually average 6.5, dragging team balance off.
  */
-function computeSkillBaseline(players: RankedPlayer[]): SkillBaseline {
+export function computeSkillBaseline(players: RankedPlayer[]): SkillBaseline {
   const buckets = new Map<SkillLevel, { sum: number; count: number }>();
   for (const p of players) {
     if (p.matches_played_season >= VETERAN_THRESHOLD) {
@@ -104,6 +104,20 @@ function teamStrength(
   baseline?: SkillBaseline
 ): number {
   return team.reduce((s, p) => s + compositeStrength(p, rankingWeight, baseline), 0);
+}
+
+/**
+ * Versão pública: força composta de um time arbitrário, usando a baseline
+ * derivada do próprio pool fornecido. Usada na seleção manual para
+ * recalcular odds em tempo real conforme o usuário move jogadores.
+ */
+export function computeTeamStrength(
+  team: RankedPlayer[],
+  pool: RankedPlayer[],
+  rankingWeight = 0.7
+): number {
+  const baseline = computeSkillBaseline(pool);
+  return teamStrength(team, rankingWeight, baseline);
 }
 
 function countPosition(team: RankedPlayer[], pos: PlayerPosition): number {

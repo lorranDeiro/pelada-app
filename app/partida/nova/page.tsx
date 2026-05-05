@@ -12,15 +12,28 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ManualTeamSelector } from '@/components/manual-team-selector';
-import { fetchActivePlayers, fetchRankedPlayers } from '@/lib/players';
+import {
+  fetchActivePlayers,
+  fetchPlayerSeasonStatsRows,
+  fetchRankedPlayers,
+} from '@/lib/players';
 import { getOrCreateActiveSeason } from '@/lib/season';
-import { assignTeamsManually } from '@/lib/team-selector';
 import { supabase } from '@/lib/supabase';
 import { balanceTeams, type BalancedTeams } from '@/lib/team-balancer';
 import { WinProbabilityBar } from '@/components/win-probability-bar';
+import { OddsBadge } from '@/components/odds-badge';
+import { DraftLoadingOverlay } from '@/components/draft-loading-overlay';
+import { TeamRevealAnimation } from '@/components/team-reveal-animation';
+import { buildOddsContext, computePlayerOdds, type OddsContext } from '@/lib/player-odds';
 import type { Player, RankedPlayer } from '@/lib/types';
 
-type Step = 'checkin' | 'modo-selecao' | 'sorteio' | 'formacao-manual';
+type Step =
+  | 'checkin'
+  | 'modo-selecao'
+  | 'formacao-manual'
+  | 'draft-loading'
+  | 'reveal'
+  | 'sorteio';
 
 export default function NovaPartidaPage() {
   return (
@@ -38,9 +51,9 @@ function NovaPartidaContent() {
   const [step, setStep] = useState<Step>('checkin');
   const [teams, setTeams] = useState<BalancedTeams | null>(null);
   const [rankedPlayers, setRankedPlayers] = useState<RankedPlayer[] | null>(null);
+  const [oddsCtx, setOddsCtx] = useState<OddsContext | null>(null);
   const [seed, setSeed] = useState(42);
   const [confirming, setConfirming] = useState(false);
-  const [matchIdForManual, setMatchIdForManual] = useState<string | null>(null);
 
   useEffect(() => {
     fetchActivePlayers()
@@ -60,8 +73,13 @@ function NovaPartidaContent() {
   async function proceedToModeSelection() {
     try {
       const season = await getOrCreateActiveSeason();
-      const ranked = await fetchRankedPlayers(season.id, Array.from(selected));
+      const ids = Array.from(selected);
+      const [ranked, statsRows] = await Promise.all([
+        fetchRankedPlayers(season.id, ids),
+        fetchPlayerSeasonStatsRows(season.id, ids),
+      ]);
       setRankedPlayers(ranked);
+      setOddsCtx(buildOddsContext(statsRows));
       setStep('modo-selecao');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro desconhecido';
@@ -69,13 +87,14 @@ function NovaPartidaContent() {
     }
   }
 
-  async function sortear(newSeed = seed) {
+  function sortear(newSeed = seed) {
     if (!rankedPlayers) return;
     try {
       const result = balanceTeams(rankedPlayers, { seed: newSeed });
       setTeams(result);
       setSeed(newSeed);
-      setStep('sorteio');
+      // Loading hype primeiro, reveal depois, preview interativo no fim.
+      setStep('draft-loading');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro desconhecido';
       toast.error('Erro no sorteio', { description: msg });
@@ -209,10 +228,25 @@ function NovaPartidaContent() {
     );
   }
 
+  if (step === 'draft-loading') {
+    return <DraftLoadingOverlay onDone={() => setStep('reveal')} />;
+  }
+
+  if (step === 'reveal' && teams && oddsCtx) {
+    return (
+      <TeamRevealAnimation
+        teams={teams}
+        oddsCtx={oddsCtx}
+        onComplete={() => setStep('sorteio')}
+      />
+    );
+  }
+
   if (step === 'sorteio' && teams) {
     return (
       <TeamsPreview
         teams={teams}
+        oddsCtx={oddsCtx}
         onBack={() => setStep('modo-selecao')}
         onReshuffle={() => sortear(seed + 1)}
         onConfirm={confirmarSorteio}
@@ -237,6 +271,7 @@ function NovaPartidaContent() {
         </div>
         <ManualTeamSelector
           players={rankedPlayers}
+          oddsCtx={oddsCtx ?? undefined}
           onSave={confirmarManual}
           isLoading={confirming}
         />
@@ -410,12 +445,14 @@ function ModeSelection({
 
 function TeamsPreview({
   teams,
+  oddsCtx,
   onBack,
   onReshuffle,
   onConfirm,
   confirming,
 }: {
   teams: BalancedTeams;
+  oddsCtx: OddsContext | null;
   onBack: () => void;
   onReshuffle: () => void;
   onConfirm: () => void;
@@ -441,11 +478,17 @@ function TeamsPreview({
       />
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <TeamCard name="Escuros" players={teams.teamA} strength={teams.debug.strengthA} />
+        <TeamCard
+          name="Escuros"
+          players={teams.teamA}
+          strength={teams.debug.strengthA}
+          oddsCtx={oddsCtx}
+        />
         <TeamCard
           name="Coloridos"
           players={teams.teamB}
           strength={teams.debug.strengthB}
+          oddsCtx={oddsCtx}
         />
       </div>
 
@@ -472,10 +515,12 @@ function TeamCard({
   name,
   players,
   strength,
+  oddsCtx,
 }: {
   name: string;
   players: RankedPlayer[];
   strength: number;
+  oddsCtx: OddsContext | null;
 }) {
   return (
     <Card>
@@ -486,18 +531,35 @@ function TeamCard({
             força {strength.toFixed(1)}
           </span>
         </div>
-        <ul className="space-y-1 text-sm">
-          {players.map((p) => (
-            <li key={p.id} className="flex items-center justify-between gap-2">
-              <span className="flex min-w-0 items-center gap-2">
-                {p.position === 'GOLEIRO_FIXO' && <span>🧤</span>}
-                <span className="truncate">{p.name}</span>
-              </span>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {'★'.repeat(p.skill_level)}
-              </span>
-            </li>
-          ))}
+        <ul className="space-y-2 text-sm">
+          {players.map((p) => {
+            const odds = oddsCtx
+              ? computePlayerOdds(
+                  p,
+                  players.filter((x) => x.id !== p.id),
+                  oddsCtx
+                )
+              : null;
+            return (
+              <li key={p.id} className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
+                    {p.position === 'GOLEIRO_FIXO' && <span>🧤</span>}
+                    <span className="truncate">{p.name}</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {'★'.repeat(p.skill_level)}
+                  </span>
+                </div>
+                {odds && (
+                  <div className="flex flex-wrap gap-1">
+                    <OddsBadge label="Gol" value={odds.goal} tone="goal" />
+                    <OddsBadge label="Ass" value={odds.assist} tone="assist" />
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </CardContent>
     </Card>

@@ -1,17 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { OddsBadge } from '@/components/odds-badge';
+import { WinProbabilityBar } from '@/components/win-probability-bar';
+import { computeTeamStrength } from '@/lib/team-balancer';
+import { computePlayerOdds, type OddsContext, type PlayerOdds } from '@/lib/player-odds';
 import type { RankedPlayer } from '@/lib/types';
 
 interface ManualTeamSelectorProps {
   players: RankedPlayer[];
   teamA?: RankedPlayer[];
   teamB?: RankedPlayer[];
+  /** Stats da temporada para calcular odds em tempo real. */
+  oddsCtx?: OddsContext;
   onSave: (teamA: RankedPlayer[], teamB: RankedPlayer[]) => Promise<void>;
   isLoading?: boolean;
 }
@@ -20,6 +26,7 @@ export function ManualTeamSelector({
   players,
   teamA: initialTeamA,
   teamB: initialTeamB,
+  oddsCtx,
   onSave,
   isLoading = false,
 }: ManualTeamSelectorProps) {
@@ -69,6 +76,17 @@ export function ManualTeamSelector({
   const totalPlayers = players.length;
   const assignedPlayers = teamA.length + teamB.length;
 
+  // Live: força composta + odds individuais recalculados a cada mudança.
+  const strengthA = useMemo(() => computeTeamStrength(teamA, players), [teamA, players]);
+  const strengthB = useMemo(() => computeTeamStrength(teamB, players), [teamB, players]);
+  const showOdds = teamA.length > 0 && teamB.length > 0;
+
+  function oddsFor(player: RankedPlayer, team: 'A' | 'B'): PlayerOdds | null {
+    if (!oddsCtx) return null;
+    const teammates = (team === 'A' ? teamA : teamB).filter((t) => t.id !== player.id);
+    return computePlayerOdds(player, teammates, oddsCtx);
+  }
+
   const handleSave = async () => {
     if (!isValid) {
       toast.error('Formação inválida', {
@@ -99,6 +117,11 @@ export function ManualTeamSelector({
           Arraste os jogadores ou use os botões para definir manualmente as equipas.
         </p>
       </div>
+
+      {/* Live Win Probability — só aparece quando ambos times têm jogadores */}
+      {showOdds && (
+        <WinProbabilityBar strengthA={strengthA} strengthB={strengthB} />
+      )}
 
       {/* Progress */}
       <div className="bg-surface border border-surface-border rounded-xl p-4">
@@ -138,6 +161,7 @@ export function ManualTeamSelector({
                   key={player.id}
                   player={player}
                   team="A"
+                  odds={oddsFor(player, 'A')}
                   onMove={() => moveToUnassigned(player, 'A')}
                   onSwap={() => swapTeam(player, 'A')}
                   moveLabel="🔄"
@@ -210,6 +234,7 @@ export function ManualTeamSelector({
                   key={player.id}
                   player={player}
                   team="B"
+                  odds={oddsFor(player, 'B')}
                   onMove={() => moveToUnassigned(player, 'B')}
                   onSwap={() => swapTeam(player, 'B')}
                   moveLabel="🔄"
@@ -263,13 +288,14 @@ export function ManualTeamSelector({
 interface PlayerCardProps {
   player: RankedPlayer;
   team: 'A' | 'B';
+  odds?: PlayerOdds | null;
   onMove: () => void;
   onSwap: () => void;
   moveLabel: string;
   swapLabel: string;
 }
 
-function PlayerCard({ player, team, onMove, onSwap, moveLabel, swapLabel }: PlayerCardProps) {
+function PlayerCard({ player, odds, onMove, onSwap, moveLabel, swapLabel }: PlayerCardProps) {
   const isGK = player.position === 'GOLEIRO_FIXO';
 
   return (
@@ -279,6 +305,12 @@ function PlayerCard({ player, team, onMove, onSwap, moveLabel, swapLabel }: Play
           {isGK ? '🧤 ' : ''} {player.name}
         </p>
         <p className="text-xs text-text-secondary">⭐ {player.skill_level}/5</p>
+        {odds && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            <OddsBadge label="Gol" value={odds.goal} tone="goal" />
+            <OddsBadge label="Ass" value={odds.assist} tone="assist" />
+          </div>
+        )}
       </div>
 
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
