@@ -1,139 +1,117 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { toast } from 'sonner';
-import { AppNav } from '@/components/app-nav';
-import { RequireAuth } from '@/components/require-auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { getOrCreateActiveSeason } from '@/lib/season';
-import { supabase } from '@/lib/supabase';
-import type { Season, SeasonStats } from '@/lib/types';
+import { ArrowRight, ShieldCheck, User } from 'lucide-react';
+import { useAuth } from '@/components/auth-provider';
 
-export default function Home() {
-  return (
-    <RequireAuth>
-      <AppNav />
-      <HomeContent />
-    </RequireAuth>
-  );
-}
+export default function LandingPage() {
+  const { user, isAdmin, loading, signOut } = useAuth();
 
-function HomeContent() {
-  const [season, setSeason] = useState<Season | null>(null);
-  const [stats, setStats] = useState<SeasonStats[] | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const activeSeason = await getOrCreateActiveSeason();
-        setSeason(activeSeason);
-        const { data, error } = await supabase
-          .from('v_player_season_stats')
-          .select('*')
-          .eq('season_id', activeSeason.id)
-          .order('total_points', { ascending: false });
-        if (error) throw error;
-        setStats((data ?? []) as SeasonStats[]);
-      } catch (e) {
-        toast.error('Erro ao carregar ranking', {
-          description: e instanceof Error ? e.message : String(e),
-        });
-        setStats([]);
-      }
-    })();
-  }, []);
-
-  if (!stats) {
-    return <main className="p-4 text-sm text-muted-foreground">Carregando…</main>;
-  }
+  // Card do administrador é "smart": se já está logado e é admin, vai
+  // direto pro menu admin; caso contrário cai no /login.
+  const adminHref = !loading && user && isAdmin ? '/admin/home' : '/login?role=admin';
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 space-y-4 p-4">
-      <div className="flex items-end justify-between">
-        <h1 className="text-2xl font-semibold">Ranking</h1>
-        {season && <Badge variant="outline">Temporada {season.name}</Badge>}
+    <main className="min-h-screen bg-gradient-premium text-text-primary">
+      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-8 sm:px-6 lg:px-8">
+        <header className="mb-12 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">⚽</span>
+            <span className="text-lg font-bold">Pelada App</span>
+          </div>
+          {user ? (
+            <button
+              onClick={() => signOut()}
+              className="text-sm text-text-secondary transition hover:text-accent-bright"
+            >
+              Sair
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className="text-sm text-text-secondary transition hover:text-accent-bright"
+            >
+              Entrar →
+            </Link>
+          )}
+        </header>
+
+        <div className="mb-10 space-y-3 text-center sm:mb-16">
+          <h1 className="text-3xl font-bold sm:text-4xl">Quem está acessando?</h1>
+          <p className="text-text-secondary">
+            Escolha seu perfil para continuar.
+          </p>
+        </div>
+
+        <div className="mx-auto grid w-full max-w-3xl flex-1 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+          <ProfileCard
+            href="/jogador"
+            label="Jogador"
+            description="Veja o ranking da liga e o histórico de partidas"
+            icon={<User className="size-16 text-accent" strokeWidth={1.5} />}
+            ringColor="ring-accent/30 hover:ring-accent"
+            glowColor="from-accent/20 to-accent/5"
+          />
+          <ProfileCard
+            href={adminHref}
+            label="Administrador"
+            description="Gerencie elenco, partidas e o painel completo"
+            icon={
+              <ShieldCheck className="size-16 text-accent-secondary" strokeWidth={1.5} />
+            }
+            ringColor="ring-accent-secondary/30 hover:ring-accent-secondary"
+            glowColor="from-accent-secondary/20 to-accent-secondary/5"
+          />
+        </div>
+
+        <footer className="mt-16 text-center text-xs text-text-secondary">
+          ⚡ Gestão inteligente das suas peladas
+        </footer>
       </div>
-
-      {stats.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Ainda sem partidas finalizadas</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>
-              Cadastre jogadores no{' '}
-              <Link href="/elenco" className="font-medium text-foreground underline">
-                Elenco
-              </Link>{' '}
-              e registre a primeira em{' '}
-              <Link
-                href="/partida/nova"
-                className="font-medium text-foreground underline"
-              >
-                Nova partida
-              </Link>
-              .
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <RankingTable stats={stats} />
-      )}
     </main>
   );
 }
 
-function RankingTable({ stats }: { stats: SeasonStats[] }) {
+interface ProfileCardProps {
+  href: string;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  ringColor: string;
+  glowColor: string;
+}
+
+function ProfileCard({
+  href,
+  label,
+  description,
+  icon,
+  ringColor,
+  glowColor,
+}: ProfileCardProps) {
   return (
-    <Card>
-      <CardContent className="p-0">
-        <table className="w-full text-sm">
-          <thead className="border-b text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 text-left">#</th>
-              <th className="px-2 py-2 text-left">Jogador</th>
-              <th className="px-2 py-2 text-right">J</th>
-              <th className="px-2 py-2 text-right">Nota</th>
-              <th className="px-3 py-2 text-right">Pts</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.map((s, i) => (
-              <tr key={s.player_id} className="border-b last:border-0">
-                <td className="px-3 py-2 text-muted-foreground tabular-nums">
-                  {i + 1}
-                </td>
-                <td className="max-w-0 px-2 py-2">
-                  <div className="flex items-center gap-1.5">
-                    {s.position === 'GOLEIRO_FIXO' && <span>🧤</span>}
-                    <span className="truncate font-medium">{s.name}</span>
-                    {s.mvp_count > 0 && (
-                      <Badge variant="secondary" className="ml-1">
-                        🏆 {s.mvp_count}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">
-                    {s.wins}V {s.draws}E {s.losses}D · {s.goals}G {s.assists}A{' '}
-                    {s.saves}D
-                  </div>
-                </td>
-                <td className="px-2 py-2 text-right tabular-nums">
-                  {s.matches_played}
-                </td>
-                <td className="px-2 py-2 text-right tabular-nums">
-                  {Number(s.avg_rating).toFixed(1)}
-                </td>
-                <td className="px-3 py-2 text-right font-semibold tabular-nums">
-                  {Number(s.total_points).toFixed(1)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
+    <Link
+      href={href}
+      className="group relative flex flex-col items-center gap-5 overflow-hidden rounded-2xl border border-surface-border bg-surface p-8 transition hover:scale-[1.02] hover:shadow-2xl"
+    >
+      <div
+        className={`absolute inset-0 -z-10 bg-gradient-to-b ${glowColor} opacity-50 transition group-hover:opacity-100`}
+      />
+      <div
+        className={`flex size-28 items-center justify-center rounded-full bg-background/60 ring-2 transition ${ringColor}`}
+      >
+        {/* PLACEHOLDER: trocar pelo SVG de silhueta real, se desejar.
+            Caminho sugerido: /public/icons/silhouette-{player|admin}.svg */}
+        {icon}
+      </div>
+      <div className="space-y-1 text-center">
+        <h2 className="text-2xl font-bold">{label}</h2>
+        <p className="text-sm text-text-secondary">{description}</p>
+      </div>
+      <div className="mt-2 flex items-center gap-1 text-sm font-semibold text-text-primary">
+        Continuar
+        <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
+      </div>
+    </Link>
   );
 }

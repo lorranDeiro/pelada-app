@@ -12,6 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { HistoryFiltersComponent, type HistoryFilters } from '@/components/history-filters';
 import { getPlayersForFilter } from '@/lib/matches';
 import { DataExport } from '@/components/data-export';
+import { MatchStatsTable } from '@/components/match-stats-table';
 
 interface MatchWithDetails extends Match {
   mvp?: Player | null;
@@ -267,6 +268,19 @@ export default function PublicHistoryPage() {
                           </p>
                         </div>
                       )}
+
+                      {/* Stats por jogador (estilo FIFA) */}
+                      <div className="space-y-2">
+                        <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-300">
+                          <Trophy className="h-4 w-4" />
+                          Estatísticas dos jogadores
+                        </h4>
+                        <MatchStatsTable
+                          matchId={match.id}
+                          teamAName={match.team_a_name}
+                          teamBName={match.team_b_name}
+                        />
+                      </div>
 
                       {/* Comments Section */}
                       <div className="space-y-4">
