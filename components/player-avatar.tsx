@@ -10,6 +10,22 @@ interface Props {
   ringClass?: string;
 }
 
+/** 
+ * Resolve photo URL: if it's a plain filename (no slashes or http),
+ * treat it as a local file in /players/filename.png
+ */
+function resolvePhotoUrl(photoUrl?: string | null): string | null {
+  if (!photoUrl) return null;
+  
+  // If it already has a slash or http, use as-is (external or full path)
+  if (photoUrl.includes('/') || photoUrl.startsWith('http')) {
+    return photoUrl;
+  }
+  
+  // Otherwise, treat as a filename in public/players/
+  return `/players/${photoUrl}`;
+}
+
 export function PlayerAvatar({
   name,
   photoUrl,
@@ -24,6 +40,8 @@ export function PlayerAvatar({
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('');
 
+  const resolvedUrl = resolvePhotoUrl(photoUrl);
+
   return (
     <div
       className={cn(
@@ -33,9 +51,9 @@ export function PlayerAvatar({
       )}
       style={{ width: size, height: size }}
     >
-      {photoUrl ? (
+      {resolvedUrl ? (
         <Image
-          src={photoUrl}
+          src={resolvedUrl}
           alt={name}
           fill
           sizes={`${size}px`}

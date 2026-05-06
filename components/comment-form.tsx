@@ -71,7 +71,11 @@ export function CommentForm({ matchId, onCommentAdded }: CommentFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 p-4 bg-gray-50 rounded-lg border">
+    <form
+      onSubmit={handleSubmit}
+      onClick={(e) => e.stopPropagation()}
+      className="space-y-3 p-4 bg-gray-50 rounded-lg border"
+    >
       <div className="space-y-2">
         <label className="block text-sm font-medium">Seu nome *</label>
         <Input

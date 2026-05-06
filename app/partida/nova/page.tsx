@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ManualTeamSelector } from '@/components/manual-team-selector';
 import {
   fetchActivePlayers,
+  fetchAllTimeRankedPlayers,
   fetchPlayerSeasonStatsRows,
   fetchRankedPlayers,
 } from '@/lib/players';
@@ -54,6 +55,7 @@ function NovaPartidaContent() {
   const [oddsCtx, setOddsCtx] = useState<OddsContext | null>(null);
   const [seed, setSeed] = useState(42);
   const [confirming, setConfirming] = useState(false);
+  const [dataSource, setDataSource] = useState<'current-season' | 'all-time'>('current-season');
 
   useEffect(() => {
     fetchActivePlayers()
@@ -87,10 +89,16 @@ function NovaPartidaContent() {
     }
   }
 
-  function sortear(newSeed = seed) {
+  async function sortear(newSeed = seed) {
     if (!rankedPlayers) return;
     try {
-      const result = balanceTeams(rankedPlayers, { seed: newSeed });
+      // Quando o admin escolhe "Ranking Global", buscamos os mesmos
+      // jogadores agregados sobre TODAS as temporadas (via view unificada).
+      const playersForBalance =
+        dataSource === 'all-time'
+          ? await fetchAllTimeRankedPlayers(rankedPlayers.map((p) => p.id))
+          : rankedPlayers;
+      const result = balanceTeams(playersForBalance, { seed: newSeed });
       setTeams(result);
       setSeed(newSeed);
       // Loading hype primeiro, reveal depois, preview interativo no fim.
@@ -221,6 +229,8 @@ function NovaPartidaContent() {
     return (
       <ModeSelection
         playerCount={selected.size}
+        dataSource={dataSource}
+        onDataSourceChange={setDataSource}
         onManual={() => setStep('formacao-manual')}
         onAutomatic={() => sortear(seed)}
         onBack={() => setStep('checkin')}
@@ -353,11 +363,15 @@ function CheckIn({
 
 function ModeSelection({
   playerCount,
+  dataSource,
+  onDataSourceChange,
   onManual,
   onAutomatic,
   onBack,
 }: {
   playerCount: number;
+  dataSource: 'current-season' | 'all-time';
+  onDataSourceChange: (source: 'current-season' | 'all-time') => void;
   onManual: () => void;
   onAutomatic: () => void;
   onBack: () => void;
@@ -374,6 +388,38 @@ function ModeSelection({
           Escolha entre sorteio automático balanceado ou montagem manual.
         </p>
       </div>
+
+      {/* Data Source Toggle */}
+      <Card className="p-4 bg-accent/5 border-accent/20">
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-text-primary flex items-center gap-2">
+            📊 Base de dados para balanceamento
+          </label>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={dataSource === 'current-season' ? 'default' : 'outline'}
+              onClick={() => onDataSourceChange('current-season')}
+              className="flex-1"
+            >
+              ⏱️ Temporada Atual
+            </Button>
+            <Button
+              size="sm"
+              variant={dataSource === 'all-time' ? 'default' : 'outline'}
+              onClick={() => onDataSourceChange('all-time')}
+              className="flex-1"
+            >
+              🌍 Ranking Global
+            </Button>
+          </div>
+          <p className="text-xs text-text-secondary">
+            {dataSource === 'current-season'
+              ? 'Usando notas da temporada atual (mais recente)'
+              : 'Usando dados acumulados de todas as temporadas'}
+          </p>
+        </div>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Sorteio Automático */}

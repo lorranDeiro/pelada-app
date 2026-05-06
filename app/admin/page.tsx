@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, MessageSquare, Swords, Users } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Swords, Users, Upload } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { RequireAuth } from '@/components/require-auth';
 
@@ -33,7 +33,7 @@ function AdminHubContent() {
 
   return (
     <main className="min-h-screen bg-gradient-premium text-text-primary">
-      <div className="mx-auto w-full max-w-4xl px-4 py-8">
+      <div className="mx-auto w-full max-w-5xl px-4 py-8">
         <Link
           href="/admin/home"
           className="mb-8 inline-flex items-center gap-1.5 text-sm text-text-secondary transition hover:text-accent-bright"
@@ -44,11 +44,11 @@ function AdminHubContent() {
         <header className="mb-10 space-y-2 text-center">
           <h1 className="text-3xl font-bold">Painel de Administração</h1>
           <p className="text-text-secondary">
-            Gerencie elenco, partidas e comentários
+            Gerencie elenco, partidas, comentários e dados
           </p>
         </header>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <HubCard
             href="/elenco"
             icon={<Users className="size-10 text-accent" />}
@@ -66,6 +66,12 @@ function AdminHubContent() {
             icon={<MessageSquare className="size-10 text-accent-bright" />}
             title="Comentários"
             description="Moderar comentários públicos"
+          />
+          <HubCard
+            href="/admin/importar"
+            icon={<Upload className="size-10 text-amber-500" />}
+            title="Importar CSV"
+            description="Carregar dados de temporadas passadas"
           />
         </div>
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Trash2, Upload } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Trash2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/select';
 import { PlayerAvatar } from '@/components/player-avatar';
 import { supabase } from '@/lib/supabase';
-import { deletePlayerPhoto, uploadPlayerPhoto } from '@/lib/photos';
 import type { Player, PlayerPosition } from '@/lib/types';
 
 interface Props {
@@ -35,71 +34,49 @@ interface Props {
 
 type SkillLevel = 1 | 2 | 3 | 4 | 5;
 
+interface PlayerUpdatePayload {
+  name: string;
+  position: PlayerPosition;
+  skill_level: SkillLevel;
+  photo_url?: string | null;
+}
+
 export function PlayerDialog({ player, open, onOpenChange, onSaved }: Props) {
   const [name, setName] = useState('');
   const [position, setPosition] = useState<PlayerPosition>('JOGADOR');
   const [skill, setSkill] = useState<SkillLevel>(3);
   const [saving, setSaving] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [photoFilename, setPhotoFilename] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setName(player?.name ?? '');
       setPosition(player?.position ?? 'JOGADOR');
       setSkill((player?.skill_level ?? 3) as SkillLevel);
-      setPhotoUrl(player?.photo_url ?? null);
+      setPhotoFilename(player?.photo_url ?? null);
     }
   }, [open, player]);
-
-  async function handlePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file || !player) return;
-    setUploading(true);
-    try {
-      const url = await uploadPlayerPhoto(player.id, file);
-      setPhotoUrl(url);
-      toast.success('Foto atualizada');
-    } catch (err) {
-      toast.error('Erro ao enviar foto', {
-        description: err instanceof Error ? err.message : String(err),
-      });
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function handlePhotoRemove() {
-    if (!player || !photoUrl) return;
-    if (!confirm('Remover a foto do jogador?')) return;
-    setUploading(true);
-    try {
-      await deletePlayerPhoto(player.id, photoUrl);
-      setPhotoUrl(null);
-      toast.success('Foto removida');
-    } catch (err) {
-      toast.error('Erro ao remover', {
-        description: err instanceof Error ? err.message : String(err),
-      });
-    } finally {
-      setUploading(false);
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     setSaving(true);
-    const payload = {
+
+    const payload: PlayerUpdatePayload = {
       name: name.trim(),
       position,
       skill_level: skill,
     };
+
+    // photo_url só vai no UPDATE — Insert respeita o default da coluna
+    if (player) {
+      payload.photo_url = photoFilename || null;
+    }
+
     const { error } = player
       ? await supabase.from('players').update(payload).eq('id', player.id)
       : await supabase.from('players').insert(payload);
+
     setSaving(false);
     if (error) {
       toast.error('Erro ao salvar', { description: error.message });
@@ -115,43 +92,45 @@ export function PlayerDialog({ player, open, onOpenChange, onSaved }: Props) {
         <DialogHeader>
           <DialogTitle>{player ? 'Editar jogador' : 'Novo jogador'}</DialogTitle>
           <DialogDescription>
-            {player ? 'Atualize as informações do jogador' : 'Adicione um novo jogador ao elenco'}
+            {player
+              ? 'Atualize as informações do jogador'
+              : 'Adicione um novo jogador ao elenco'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {player && (
             <div className="flex items-center gap-3">
-              <PlayerAvatar name={name || player.name} photoUrl={photoUrl} size={64} />
-              <div className="flex flex-col gap-1">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={handlePhotoPick}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="gap-1"
-                >
-                  <Upload className="size-3.5" />
-                  {uploading ? 'Enviando…' : photoUrl ? 'Trocar foto' : 'Enviar foto'}
-                </Button>
-                {photoUrl && (
+              <PlayerAvatar
+                name={name || player.name}
+                photoUrl={photoFilename}
+                size={64}
+              />
+              <div className="flex flex-col gap-2 flex-1">
+                <div className="space-y-1">
+                  <Label htmlFor="photoFilename" className="text-xs">
+                    Arquivo de Foto (ex: neymar.png)
+                  </Label>
+                  <Input
+                    id="photoFilename"
+                    placeholder="neymar.png"
+                    value={photoFilename || ''}
+                    onChange={(e) => setPhotoFilename(e.target.value || null)}
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-text-secondary">
+                    Coloque a imagem em <code className="bg-gray-100 px-1 rounded">public/players/</code>
+                  </p>
+                </div>
+                {photoFilename && (
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
-                    onClick={handlePhotoRemove}
-                    disabled={uploading}
-                    className="gap-1 text-destructive"
+                    onClick={() => setPhotoFilename(null)}
+                    className="gap-1 text-destructive justify-start"
                   >
                     <Trash2 className="size-3.5" />
-                    Remover
+                    Remover foto
                   </Button>
                 )}
               </div>
@@ -159,7 +138,7 @@ export function PlayerDialog({ player, open, onOpenChange, onSaved }: Props) {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="name">Nome</Label>
+            <Label htmlFor="name">Nome *</Label>
             <Input
               id="name"
               value={name}
@@ -179,45 +158,54 @@ export function PlayerDialog({ player, open, onOpenChange, onSaved }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="JOGADOR">Jogador de linha</SelectItem>
-                <SelectItem value="GOLEIRO_FIXO">🧤 Goleiro fixo</SelectItem>
+                <SelectItem value="JOGADOR">Jogador</SelectItem>
+                <SelectItem value="GOLEIRO_FIXO">Goleiro Fixo</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label>Nível técnico (1–5)</Label>
+            <Label>Nível de Habilidade</Label>
             <Select
-              value={String(skill)}
-              onValueChange={(v) => setSkill(Number(v) as SkillLevel)}
+              value={skill.toString()}
+              onValueChange={(v) => setSkill(parseInt(v) as SkillLevel)}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {'★'.repeat(n) + '☆'.repeat(5 - n)} ({n})
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <SelectItem key={s} value={s.toString()}>
+                    {'⭐'.repeat(s)} {s}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Usado no sorteio enquanto não há histórico. Vai sendo substituído pela
-              nota real da temporada.
-            </p>
+          </div>
+
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 space-y-1">
+            <div className="flex gap-2">
+              <Info className="size-4 text-blue-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-blue-900">
+                <p className="font-semibold mb-1">💡 Como adicionar fotos:</p>
+                <ol className="space-y-1 list-decimal list-inside">
+                  <li>Salve a imagem em <code className="bg-white px-1">public/players/neymar.png</code></li>
+                  <li>Digite o nome do arquivo acima (ex: <code className="bg-white px-1">neymar.png</code>)</li>
+                  <li>Salve o jogador</li>
+                </ol>
+              </div>
+            </div>
           </div>
 
           <DialogFooter>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={saving}
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !name.trim()}>
               {saving ? 'Salvando…' : 'Salvar'}
             </Button>
           </DialogFooter>
