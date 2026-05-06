@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { Match, Player } from '@/lib/types';
-import { Calendar, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CommentForm } from '@/components/comment-form';
 import { CommentsList } from '@/components/comments-list';
@@ -20,6 +22,7 @@ interface MatchWithDetails extends Match {
 }
 
 export default function PublicHistoryPage() {
+  const router = useRouter();
   const [matches, setMatches] = useState<MatchWithDetails[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<MatchWithDetails[]>([]);
   const [teamByMatch, setTeamByMatch] = useState<Map<string, Map<string, 1 | 2>>>(new Map());
@@ -147,8 +150,18 @@ export default function PublicHistoryPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-8 shadow-lg">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
+        <div className="max-w-4xl mx-auto space-y-3">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => router.back()}
+            className="gap-1 text-blue-100 hover:bg-white/10 hover:text-white"
+            aria-label="Voltar"
+          >
+            <ArrowLeft className="size-4" />
+            Voltar
+          </Button>
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Calendar className="h-8 w-8" />
               <h1 className="text-3xl font-bold">Histórico de Partidas</h1>

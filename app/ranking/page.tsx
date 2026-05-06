@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { toPng } from 'html-to-image';
 import { saveAs } from 'file-saver';
-import { Trophy, Download } from 'lucide-react';
+import { ArrowLeft, Trophy, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import type { SeasonStats, Season } from '@/lib/types';
@@ -30,6 +31,7 @@ interface SeasonWithStats {
 }
 
 export default function PublicRankingPage() {
+  const router = useRouter();
   const [seasons, setSeasons] = useState<SeasonWithStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<string>('');
@@ -96,9 +98,15 @@ export default function PublicRankingPage() {
 
   const stats = currentSeasonData?.stats || [];
 
+  // Lookup precisa olhar pra displayStats (não stats), porque no modo
+  // Global currentSeasonData fica undefined e stats vira []. Era esse
+  // o bug do "card não carrega no Global".
   const cardStats = useMemo(
-    () => (cardPlayerId ? stats.find((s) => s.player_id === cardPlayerId) ?? null : null),
-    [cardPlayerId, stats]
+    () =>
+      cardPlayerId
+        ? displayStats.find((s) => s.player_id === cardPlayerId) ?? null
+        : null,
+    [cardPlayerId, displayStats]
   );
 
   // Ranking Global: agrupa todos os jogadores sem filtro de season
@@ -191,6 +199,16 @@ export default function PublicRankingPage() {
       <header className="border-b border-fs-border bg-fs-surface">
         <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => router.back()}
+              className="gap-1 text-fs-text-dim hover:bg-fs-surface-2 hover:text-fs-text"
+              aria-label="Voltar"
+            >
+              <ArrowLeft className="size-4" />
+              <span className="hidden sm:inline">Voltar</span>
+            </Button>
             <div className="flex size-9 items-center justify-center rounded-full bg-fs-accent/15 text-fs-accent">
               <Trophy className="size-5" />
             </div>
@@ -322,14 +340,18 @@ export default function PublicRankingPage() {
               <TabsContent value="progress">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">
-                    Últimas 10 partidas — pontos (barras) e rating (linha).
+                    {selectedTab === 'global'
+                      ? 'Últimas 10 partidas reais (todas as temporadas).'
+                      : 'Últimas 10 partidas — pontos (barras) e rating (linha).'}
                   </p>
-                  {currentSeasonData && (
-                    <PlayerProgressChart
-                      playerId={cardStats.player_id}
-                      seasonId={currentSeasonData.season.id}
-                    />
-                  )}
+                  <PlayerProgressChart
+                    playerId={cardStats.player_id}
+                    seasonId={
+                      selectedTab === 'global'
+                        ? undefined
+                        : currentSeasonData?.season.id
+                    }
+                  />
                 </div>
               </TabsContent>
             </Tabs>

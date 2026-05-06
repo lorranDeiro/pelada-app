@@ -16,7 +16,8 @@ import { fetchPlayerProgress, type ProgressPoint } from '@/lib/player-charts';
 
 interface Props {
   playerId: string;
-  seasonId: string;
+  /** Quando undefined, busca all-time (todas as temporadas). */
+  seasonId?: string;
   limit?: number;
 }
 

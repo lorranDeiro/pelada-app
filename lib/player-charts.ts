@@ -87,18 +87,31 @@ export interface ProgressPoint {
   points: number;  // total_points
 }
 
+/**
+ * Pega as últimas N partidas do jogador. Se `seasonId` for undefined,
+ * agrega TODAS as temporadas (modo all-time, usado pelo ranking Global).
+ *
+ * NOTA: só inclui partidas reais (player_match_results). Temporadas
+ * importadas via CSV não têm dados granulares por partida e não aparecem
+ * aqui — fica como limitação conhecida do modo all-time.
+ */
 export async function fetchPlayerProgress(
   playerId: string,
-  seasonId: string,
+  seasonId?: string,
   limit = 10
 ): Promise<ProgressPoint[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('player_match_results')
     .select('match_rating,total_points,matches!inner(played_at,season_id)')
     .eq('player_id', playerId)
-    .eq('matches.season_id', seasonId)
     .order('played_at', { referencedTable: 'matches', ascending: false })
     .limit(limit);
+
+  if (seasonId) {
+    query = query.eq('matches.season_id', seasonId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
