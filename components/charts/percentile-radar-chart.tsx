@@ -98,7 +98,10 @@ export function PercentileRadarChart({ stats, allStats }: Props) {
               fontSize: '12px',
             }}
             labelStyle={{ color: '#f3f4f6' }}
-            formatter={(value: number) => [`${value.toFixed(1)}º percentil`, '']}
+            formatter={(value) => {
+              const n = typeof value === 'number' ? value : Number(value);
+              return [`${n.toFixed(1)}º percentil`, ''];
+            }}
           />
           <Legend
             wrapperStyle={{ fontSize: '12px' }}

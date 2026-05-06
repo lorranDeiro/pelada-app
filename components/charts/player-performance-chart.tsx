@@ -116,13 +116,10 @@ export function PlayerPerformanceChart({ stats, allStats }: Props) {
             }}
             labelStyle={{ color: '#f3f4f6' }}
             formatter={(value, name) => {
-              if (name === 'valor') {
-                return [value, 'Estatística'];
-              }
-              if (name === 'percentil') {
-                return [`${value.toFixed(0)}º percentil`, 'Ranking'];
-              }
-              return value;
+              const n = typeof value === 'number' ? value : Number(value);
+              if (name === 'valor') return [n, 'Estatística'];
+              if (name === 'percentil') return [`${n.toFixed(0)}º percentil`, 'Ranking'];
+              return [n, name];
             }}
           />
 
