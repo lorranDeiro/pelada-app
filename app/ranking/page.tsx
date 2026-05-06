@@ -98,17 +98,6 @@ export default function PublicRankingPage() {
 
   const stats = currentSeasonData?.stats || [];
 
-  // Lookup precisa olhar pra displayStats (não stats), porque no modo
-  // Global currentSeasonData fica undefined e stats vira []. Era esse
-  // o bug do "card não carrega no Global".
-  const cardStats = useMemo(
-    () =>
-      cardPlayerId
-        ? displayStats.find((s) => s.player_id === cardPlayerId) ?? null
-        : null,
-    [cardPlayerId, displayStats]
-  );
-
   // Ranking Global: agrupa todos os jogadores sem filtro de season
   const globalStats = useMemo(
     () => {
@@ -158,6 +147,17 @@ export default function PublicRankingPage() {
     selectedTab === 'global'
       ? { name: 'Ranking Global (All-Time)', id: 'global' }
       : currentSeasonData?.season || { name: 'Temporada', id: selectedTab };
+
+  // Lookup precisa olhar pra displayStats (não stats), porque no modo
+  // Global currentSeasonData fica undefined e stats vira []. Era esse
+  // o bug do "card não carrega no Global".
+  const cardStats = useMemo(
+    () =>
+      cardPlayerId
+        ? displayStats.find((s) => s.player_id === cardPlayerId) ?? null
+        : null,
+    [cardPlayerId, displayStats]
+  );
 
   async function handleExportTable() {
     if (!tableRef.current) return;
