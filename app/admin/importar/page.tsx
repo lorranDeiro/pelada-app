@@ -138,6 +138,10 @@ function AdminImportContent() {
         season = newSeason;
       }
 
+      if (!season) {
+        throw new Error('Não foi possível obter a temporada de destino.');
+      }
+
       // Get all players
       const { data: players, error: playersError } = await supabase
         .from('players')
