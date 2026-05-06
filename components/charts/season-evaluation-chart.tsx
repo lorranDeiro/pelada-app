@@ -95,11 +95,11 @@ export function SeasonEvaluationChart({
               borderRadius: '6px',
             }}
             labelStyle={{ color: '#f3f4f6' }}
-            formatter={(value: number, name: string) => {
-              if (name === 'points') return [value.toFixed(1), 'Pontos'];
-              if (name === 'cumulative')
-                return [value.toFixed(0), 'Total Acumulado'];
-              return value;
+            formatter={(value, name) => {
+              const n = typeof value === 'number' ? value : Number(value);
+              if (name === 'points') return [n.toFixed(1), 'Pontos'];
+              if (name === 'cumulative') return [n.toFixed(0), 'Total Acumulado'];
+              return [n, name];
             }}
           />
 
