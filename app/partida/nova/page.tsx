@@ -24,7 +24,7 @@ import { balanceTeams, type BalancedTeams } from '@/lib/team-balancer';
 import { WinProbabilityBar } from '@/components/win-probability-bar';
 import { OddsBadge } from '@/components/odds-badge';
 import { DraftLoadingOverlay } from '@/components/draft-loading-overlay';
-import { TeamRevealAnimation } from '@/components/team-reveal-animation';
+import { TeamDrawAnimator } from '@/components/team-draw-animator';
 import { buildOddsContext, computePlayerOdds, type OddsContext } from '@/lib/player-odds';
 import type { Player, RankedPlayer } from '@/lib/types';
 
@@ -244,7 +244,7 @@ function NovaPartidaContent() {
 
   if (step === 'reveal' && teams && oddsCtx) {
     return (
-      <TeamRevealAnimation
+      <TeamDrawAnimator
         teams={teams}
         oddsCtx={oddsCtx}
         onComplete={() => setStep('sorteio')}
