@@ -28,24 +28,36 @@ export async function insertEvent(params: {
   team: 1 | 2;
   event_type: EventType;
 }): Promise<MatchEvent> {
+  const [event] = await insertEventBatch({ ...params, quantity: 1 });
+  return event;
+}
+
+export async function insertEventBatch(params: {
+  match_id: string;
+  player_id: string;
+  team: 1 | 2;
+  event_type: EventType;
+  quantity: number;
+}): Promise<MatchEvent[]> {
   const openShifts = await fetchOpenShifts(params.match_id);
   const in_gk_turn = openShifts.some(
     (s) => s.team === params.team && s.player_id === params.player_id
   );
 
+  const eventsToInsert = Array.from({ length: params.quantity }).map(() => ({
+    match_id: params.match_id,
+    player_id: params.player_id,
+    event_type: params.event_type,
+    points: EVENT_WEIGHTS[params.event_type],
+    in_gk_turn,
+  }));
+
   const { data, error } = await supabase
     .from('match_events')
-    .insert({
-      match_id: params.match_id,
-      player_id: params.player_id,
-      event_type: params.event_type,
-      points: EVENT_WEIGHTS[params.event_type],
-      in_gk_turn,
-    })
-    .select()
-    .single();
+    .insert(eventsToInsert)
+    .select();
   if (error) throw error;
-  return data as MatchEvent;
+  return data as MatchEvent[];
 }
 
 export async function deleteEvent(eventId: string): Promise<void> {

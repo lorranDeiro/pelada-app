@@ -13,7 +13,7 @@ import {
   deleteEvent,
   fetchEvents,
   fetchOpenShifts,
-  insertEvent,
+  insertEventBatch,
   switchGk,
 } from '@/lib/events';
 import { supabase } from '@/lib/supabase';
@@ -59,6 +59,38 @@ export function LiveMatchPanel({ match: initialMatch, roster }: Props) {
     return map;
   }, [openShifts]);
 
+  const goalsByTeam = useMemo(() => {
+    const teamA: Record<string, number> = {};
+    const teamB: Record<string, number> = {};
+    
+    events.forEach(e => {
+      if (e.event_type === 'GOAL' || e.event_type === 'WINNING_GOAL') {
+        const p = playersById.get(e.player_id);
+        if (p) {
+          const map = p.team === 1 ? teamA : teamB;
+          map[p.name] = (map[p.name] || 0) + 1;
+        }
+      } else if (e.event_type === 'OWN_GOAL') {
+        const p = playersById.get(e.player_id);
+        if (p) {
+          const map = p.team === 1 ? teamB : teamA;
+          const name = `${p.name} (GC)`;
+          map[name] = (map[name] || 0) + 1;
+        }
+      }
+    });
+
+    const formatScorers = (map: Record<string, number>) =>
+      Object.entries(map)
+        .map(([name, goals]) => ({ name, goals }))
+        .sort((a, b) => b.goals - a.goals);
+
+    return {
+      teamA: formatScorers(teamA),
+      teamB: formatScorers(teamB),
+    };
+  }, [events, playersById]);
+
   const refetch = useCallback(async () => {
     try {
       const [newEvents, newShifts] = await Promise.all([
@@ -76,18 +108,26 @@ export function LiveMatchPanel({ match: initialMatch, roster }: Props) {
     refetch();
   }, [refetch]);
 
-  async function handlePickAction(type: EventType) {
+  async function handlePickAction(type: EventType, quantity: number = 1) {
     if (!tappedPlayer) return;
     const player = tappedPlayer;
     setTappedPlayer(null);
     try {
-      await insertEvent({
+      await insertEventBatch({
         match_id: match.id,
         player_id: player.id,
         team: player.team,
         event_type: type,
+        quantity,
       });
-      toast.success(`${EVENT_LABELS[type]} • ${player.name}`);
+
+      if (type === 'GOAL' || type === 'WINNING_GOAL') {
+        await handleScore(player.team, quantity);
+      } else if (type === 'OWN_GOAL') {
+        await handleScore(player.team === 1 ? 2 : 1, quantity);
+      }
+
+      toast.success(`${quantity > 1 ? `${quantity}x ` : ''}${EVENT_LABELS[type]} • ${player.name}`);
       refetch();
     } catch (e) {
       toast.error('Erro ao registrar evento', { description: describeError(e) });
@@ -95,15 +135,28 @@ export function LiveMatchPanel({ match: initialMatch, roster }: Props) {
   }
 
   async function handleUndo(eventId: string) {
+    const eventToUndo = events.find(e => e.id === eventId);
     try {
       await deleteEvent(eventId);
+      
+      if (eventToUndo) {
+        const player = playersById.get(eventToUndo.player_id);
+        if (player) {
+          if (eventToUndo.event_type === 'GOAL' || eventToUndo.event_type === 'WINNING_GOAL') {
+            await handleScore(player.team, -1);
+          } else if (eventToUndo.event_type === 'OWN_GOAL') {
+            await handleScore(player.team === 1 ? 2 : 1, -1);
+          }
+        }
+      }
+
       refetch();
     } catch (e) {
       toast.error('Erro ao desfazer', { description: describeError(e) });
     }
   }
 
-  async function handleScore(team: 1 | 2, delta: 1 | -1) {
+  async function handleScore(team: 1 | 2, delta: number) {
     const field = team === 1 ? 'score_a' : 'score_b';
     const current = team === 1 ? match.score_a : match.score_b;
     const next = Math.max(0, current + delta);
@@ -143,6 +196,8 @@ export function LiveMatchPanel({ match: initialMatch, roster }: Props) {
         currentGkB={gkByTeam.get(2) ? playersById.get(gkByTeam.get(2)!) : undefined}
         onSwitchGkA={() => setGkPickerTeam(1)}
         onSwitchGkB={() => setGkPickerTeam(2)}
+        teamAGoals={goalsByTeam.teamA}
+        teamBGoals={goalsByTeam.teamB}
       />
 
       <div className="grid grid-cols-2 gap-2">
@@ -204,30 +259,36 @@ function Scoreboard({
   currentGkB,
   onSwitchGkA,
   onSwitchGkB,
+  teamAGoals = [],
+  teamBGoals = [],
 }: {
   match: Match;
-  onChange: (team: 1 | 2, delta: 1 | -1) => void;
+  onChange: (team: 1 | 2, delta: number) => void;
   currentGkA?: Player;
   currentGkB?: Player;
   onSwitchGkA: () => void;
   onSwitchGkB: () => void;
+  teamAGoals?: { name: string; goals: number }[];
+  teamBGoals?: { name: string; goals: number }[];
 }) {
   return (
     <Card>
       <CardContent className="space-y-3 p-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-start justify-between gap-2">
           <TeamScore
             name={match.team_a_name}
             score={match.score_a}
             onInc={() => onChange(1, 1)}
             onDec={() => onChange(1, -1)}
+            scorers={teamAGoals}
           />
-          <span className="text-2xl text-muted-foreground">×</span>
+          <span className="text-2xl text-muted-foreground mt-6">×</span>
           <TeamScore
             name={match.team_b_name}
             score={match.score_b}
             onInc={() => onChange(2, 1)}
             onDec={() => onChange(2, -1)}
+            scorers={teamBGoals}
           />
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
@@ -244,11 +305,13 @@ function TeamScore({
   score,
   onInc,
   onDec,
+  scorers = [],
 }: {
   name: string;
   score: number;
   onInc: () => void;
   onDec: () => void;
+  scorers?: { name: string; goals: number }[];
 }) {
   return (
     <div className="flex flex-1 flex-col items-center gap-1">
@@ -264,6 +327,15 @@ function TeamScore({
           <Plus className="size-4" />
         </Button>
       </div>
+      {scorers.length > 0 && (
+        <div className="flex flex-col items-center text-[10px] text-muted-foreground mt-1">
+          {scorers.map((s, i) => (
+            <span key={i}>
+              {s.name} {'⚽'.repeat(s.goals)}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
