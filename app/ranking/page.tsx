@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { DataExport } from '@/components/data-export';
 import { PlayerFifaCard } from '@/components/player-fifa-card';
+import { PlayerComparison } from '@/components/player-comparison';
 import { RankingTable } from '@/components/ranking-table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PercentileRadarChart } from '@/components/charts/percentile-radar-chart';
@@ -299,17 +300,18 @@ export default function PublicRankingPage() {
       </main>
 
       <Dialog open={cardPlayerId !== null} onOpenChange={(o) => !o && setCardPlayerId(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl md:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader className="sr-only">
             <DialogTitle>Detalhes do jogador</DialogTitle>
           </DialogHeader>
           {cardStats && (
             <Tabs defaultValue="card">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="card">Carta</TabsTrigger>
                 <TabsTrigger value="radar">Radar</TabsTrigger>
                 <TabsTrigger value="stats">Stats</TabsTrigger>
                 <TabsTrigger value="progress">Evolução</TabsTrigger>
+                <TabsTrigger value="compare">🥊 Comparar</TabsTrigger>
               </TabsList>
 
               <TabsContent value="card">
@@ -353,6 +355,10 @@ export default function PublicRankingPage() {
                     }
                   />
                 </div>
+              </TabsContent>
+
+              <TabsContent value="compare">
+                <PlayerComparison player1={cardStats} allStats={displayStats} />
               </TabsContent>
             </Tabs>
           )}
