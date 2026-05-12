@@ -1,0 +1,65 @@
+'use client';
+
+interface CardPatternProps {
+  color: string;
+  opacity: number;
+  className?: string;
+}
+
+/**
+ * CardPattern: SVG pattern reutilizável para cards Fifa
+ *
+ * Renderiza um padrão hexagonal sofisticado com 3 camadas:
+ * - Layer 1: Hexágonos elaborados
+ * - Layer 2: Grid de pontos
+ * - Layer 3: Linhas diagonais sutis
+ *
+ * O padrão é theme-aware e responde à cor e opacidade passadas
+ */
+export function CardPattern({ color, opacity, className = '' }: CardPatternProps) {
+  return (
+    <svg
+      className={`pointer-events-none absolute inset-0 ${className}`}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="xMidYMid slice"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ color }}
+    >
+      <defs>
+        {/* Pattern 1: Hexágonos elaborados (layer principal) */}
+        <pattern id="hexagon-layer" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+          {/* Hexágono */}
+          <polygon
+            points="15,0 27.66,7.5 27.66,22.5 15,30 2.34,22.5 2.34,7.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.8"
+            opacity="0.6"
+          />
+          {/* Centro do hexágono (ponto discreto) */}
+          <circle cx="15" cy="15" r="0.5" fill="currentColor" opacity="0.4" />
+        </pattern>
+
+        {/* Pattern 2: Grid de pontos menor (layer intermediária) */}
+        <pattern id="dots-layer" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+          <circle cx="4" cy="4" r="0.3" fill="currentColor" opacity="0.3" />
+        </pattern>
+
+        {/* Pattern 3: Linhas diagonais sutis (layer de textura) */}
+        <pattern id="diagonal-layer" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="0" x2="20" y2="20" stroke="currentColor" strokeWidth="0.4" opacity="0.15" />
+          <line x1="20" y1="0" x2="0" y2="20" stroke="currentColor" strokeWidth="0.4" opacity="0.15" />
+        </pattern>
+      </defs>
+
+      {/* Layer 3: Diagonal lines (background) */}
+      <rect width="100%" height="100%" fill="url(#diagonal-layer)" opacity={opacity} />
+
+      {/* Layer 2: Dots grid (middle) */}
+      <rect width="100%" height="100%" fill="url(#dots-layer)" opacity={opacity} />
+
+      {/* Layer 1: Hexagons (foreground) */}
+      <rect width="100%" height="100%" fill="url(#hexagon-layer)" opacity={opacity} />
+    </svg>
+  );
+}

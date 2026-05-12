@@ -90,6 +90,7 @@ const config: Config = {
         'fade-in': 'fadeIn 0.5s ease-in',
         'slide-up': 'slideUp 0.6s ease-out',
         'pulse-accent': 'pulseAccent 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'shimmer': 'shimmer 2.5s ease-in-out infinite',
       },
       
       keyframes: {
@@ -104,6 +105,19 @@ const config: Config = {
         pulseAccent: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.8' },
+        },
+        shimmer: {
+          '0%': {
+            transform: 'translateX(-100%) rotate(12deg)',
+            opacity: '0.1',
+          },
+          '50%': {
+            opacity: '0.25',
+          },
+          '100%': {
+            transform: 'translateX(100%) rotate(12deg)',
+            opacity: '0.1',
+          },
         },
       },
     },

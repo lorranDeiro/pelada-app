@@ -7,6 +7,7 @@ import { saveAs } from 'file-saver';
 import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { CardPattern } from '@/components/card-pattern';
 import { getCardTier, type Badge as BadgeType } from '@/lib/achievements';
 import type { SeasonStats } from '@/lib/types';
 
@@ -127,7 +128,7 @@ export function PlayerFifaCard({ stats, badges, hideDownload }: PlayerFifaCardPr
     <div className="flex flex-col items-center gap-3">
       <div
         ref={cardRef}
-        className="relative w-full max-w-[340px]"
+        className="group relative w-full max-w-[340px]"
         style={{
           aspectRatio: '5 / 7',
           filter: `drop-shadow(${theme.glow})`,
@@ -144,23 +145,17 @@ export function PlayerFifaCard({ stats, badges, hideDownload }: PlayerFifaCardPr
           className="absolute inset-[3px] overflow-hidden"
           style={{ background: theme.inner, clipPath: SHIELD_CLIP }}
         >
-          {/* Geometric pattern */}
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              opacity: theme.patternOpacity,
-              backgroundImage:
-                'repeating-linear-gradient(60deg, transparent 0 8px, currentColor 8px 9px), repeating-linear-gradient(-60deg, transparent 0 8px, currentColor 8px 9px)',
-              color: theme.accent,
-            }}
-          />
+          {/* Geometric pattern - SVG hexagon elaborado */}
+          <CardPattern color={theme.accent} opacity={theme.patternOpacity} />
 
           {/* Light streak */}
           <div
-            className="pointer-events-none absolute -inset-y-1/2 -right-1/3 w-2/3 rotate-12 opacity-20"
+            className="pointer-events-none absolute -inset-y-1/2 -right-1/3 w-2/3 rotate-12 group-hover:animate-shimmer"
             style={{
               background: `linear-gradient(90deg, transparent, ${theme.text}, transparent)`,
               filter: 'blur(40px)',
+              opacity: 0.15,
+              willChange: 'transform, opacity',
             }}
           />
 
