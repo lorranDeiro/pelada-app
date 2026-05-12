@@ -19,19 +19,13 @@ interface PlayerFifaCardProps {
 type Tier = 'bronze' | 'silver' | 'gold' | 'legend';
 
 interface TierTheme {
-  /** Multi-stop gradient for the metallic outer border */
   border: string;
-  /** Background of the inner card area */
   inner: string;
-  /** Color for OVR, position, name, stat values */
+  innerColor: string; // solid color para mask gradient
   text: string;
-  /** Secondary color for labels and accents */
   accent: string;
-  /** Glow shadow */
   glow: string;
-  /** Pattern overlay opacity */
   patternOpacity: number;
-  /** Pretty label for the rarity tag */
   label: string;
 }
 
@@ -40,6 +34,7 @@ const TIERS: Record<Tier, TierTheme> = {
     border:
       'linear-gradient(135deg, #a16207 0%, #f59e0b 25%, #78350f 50%, #f59e0b 75%, #92400e 100%)',
     inner: 'linear-gradient(180deg, #3f2b13 0%, #1a0e04 60%, #0a0502 100%)',
+    innerColor: '#0a0502',
     text: '#fde68a',
     accent: '#fbbf24',
     glow: '0 25px 60px -20px rgba(180, 83, 9, 0.6)',
@@ -50,6 +45,7 @@ const TIERS: Record<Tier, TierTheme> = {
     border:
       'linear-gradient(135deg, #94a3b8 0%, #f1f5f9 25%, #64748b 50%, #f1f5f9 75%, #cbd5e1 100%)',
     inner: 'linear-gradient(180deg, #1e293b 0%, #0f172a 60%, #020617 100%)',
+    innerColor: '#020617',
     text: '#f1f5f9',
     accent: '#cbd5e1',
     glow: '0 25px 60px -20px rgba(148, 163, 184, 0.55)',
@@ -60,6 +56,7 @@ const TIERS: Record<Tier, TierTheme> = {
     border:
       'linear-gradient(135deg, #b45309 0%, #fbbf24 20%, #fde68a 35%, #f59e0b 50%, #fde68a 65%, #fbbf24 80%, #b45309 100%)',
     inner: 'linear-gradient(180deg, #1c1303 0%, #0a0701 60%, #050300 100%)',
+    innerColor: '#050300',
     text: '#fde68a',
     accent: '#fbbf24',
     glow: '0 25px 60px -20px rgba(250, 204, 21, 0.65)',
@@ -70,6 +67,7 @@ const TIERS: Record<Tier, TierTheme> = {
     border:
       'linear-gradient(135deg, #c026d3 0%, #f0abfc 20%, #a855f7 40%, #f0abfc 60%, #ec4899 80%, #c026d3 100%)',
     inner: 'linear-gradient(180deg, #1e1b4b 0%, #0a0420 60%, #030014 100%)',
+    innerColor: '#030014',
     text: '#fdf4ff',
     accent: '#f0abfc',
     glow: '0 0 50px rgba(192, 132, 252, 0.7), 0 25px 60px -20px rgba(192, 132, 252, 0.5)',
@@ -78,9 +76,13 @@ const TIERS: Record<Tier, TierTheme> = {
   },
 };
 
-/** Shield-ish silhouette: flat top with widely curved bottom point */
+/**
+ * Shield mais "gentil": taper só nos últimos ~18% da altura.
+ * Acima disso, o shape é praticamente um retângulo com cantos chanfrados,
+ * deixando uma área interna muito mais utilizável pro conteúdo.
+ */
 const SHIELD_CLIP =
-  'polygon(8% 0%, 92% 0%, 100% 8%, 100% 70%, 95% 80%, 80% 92%, 50% 100%, 20% 92%, 5% 80%, 0% 70%, 0% 8%)';
+  'polygon(8% 0%, 92% 0%, 100% 6%, 100% 82%, 92% 94%, 50% 100%, 8% 94%, 0% 82%, 0% 6%)';
 
 export function PlayerFifaCard({ stats, badges, hideDownload }: PlayerFifaCardProps) {
   const tier = getCardTier(stats.dynamic_rating);
@@ -88,12 +90,10 @@ export function PlayerFifaCard({ stats, badges, hideDownload }: PlayerFifaCardPr
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [downloading, setDownloading] = useState(false);
 
-  // FUT-style OVR: rating 0–5 mapeado para 0–99
   const ovr = Math.min(99, Math.round((stats.dynamic_rating ?? 0) * 20));
   const positionLabel = stats.position === 'GOLEIRO_FIXO' ? 'GOL' : 'ATA';
   const photoUrl = resolvePhotoUrl(stats.photo_url);
 
-  // Stats no formato FUT (6 slots)
   const statCells: Array<{ label: string; value: string }> = [
     { label: 'GOL', value: String(stats.goals) },
     { label: 'AST', value: String(stats.assists) },
@@ -139,12 +139,12 @@ export function PlayerFifaCard({ stats, badges, hideDownload }: PlayerFifaCardPr
           style={{ background: theme.border, clipPath: SHIELD_CLIP }}
         />
 
-        {/* Inner card content area */}
+        {/* Inner card */}
         <div
           className="absolute inset-[3px] overflow-hidden"
           style={{ background: theme.inner, clipPath: SHIELD_CLIP }}
         >
-          {/* Geometric pattern overlay */}
+          {/* Geometric pattern */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
@@ -157,83 +157,86 @@ export function PlayerFifaCard({ stats, badges, hideDownload }: PlayerFifaCardPr
 
           {/* Light streak */}
           <div
-            className="pointer-events-none absolute -inset-y-1/2 -right-1/2 w-full rotate-12 opacity-20"
+            className="pointer-events-none absolute -inset-y-1/2 -right-1/3 w-2/3 rotate-12 opacity-20"
             style={{
               background: `linear-gradient(90deg, transparent, ${theme.text}, transparent)`,
               filter: 'blur(40px)',
             }}
           />
 
-          {/* Player photo, anchored to fill upper area */}
+          {/* Player photo hero: fills upper ~58% edge-to-edge */}
           {photoUrl && (
             <div
               className="pointer-events-none absolute"
-              style={{
-                top: '6%',
-                left: '20%',
-                right: '20%',
-                bottom: '38%',
-              }}
+              style={{ top: 0, left: 0, right: 0, bottom: '42%' }}
             >
               <Image
                 src={photoUrl}
                 alt={stats.name}
                 fill
                 sizes="340px"
-                className="object-contain"
+                className="object-cover"
+                style={{ objectPosition: '50% 18%' }}
                 unoptimized
+              />
+              {/* Feather bottom of photo into card */}
+              <div
+                className="absolute inset-x-0 bottom-0 h-1/3"
+                style={{
+                  background: `linear-gradient(to bottom, transparent 0%, ${theme.innerColor} 100%)`,
+                }}
+              />
+              {/* Subtle dark gradient on top-left for OVR legibility */}
+              <div
+                className="absolute inset-y-0 left-0 w-1/3"
+                style={{
+                  background:
+                    'linear-gradient(to right, rgba(0,0,0,0.55) 0%, transparent 100%)',
+                }}
               />
             </div>
           )}
 
-          {/* Content overlay */}
-          <div className="relative flex h-full flex-col px-5 pb-7 pt-6">
-            {/* Top: OVR + Position */}
-            <div className="flex items-start">
-              <div className="flex flex-col items-center leading-none">
-                <span
-                  className="text-[56px] font-black leading-none tabular-nums"
-                  style={{ color: theme.text, letterSpacing: '-0.04em' }}
-                >
-                  {ovr}
-                </span>
-                <span
-                  className="mt-1 text-sm font-extrabold uppercase tracking-[0.18em]"
-                  style={{ color: theme.text }}
-                >
-                  {positionLabel}
-                </span>
-                <div
-                  className="mt-2 h-px w-8"
-                  style={{ background: theme.accent, opacity: 0.6 }}
-                />
-                <span className="mt-1 text-base" aria-hidden>👟</span>
-              </div>
-            </div>
-
-            {/* Spacer pushes name+stats to bottom */}
-            <div className="flex-1" />
-
-            {/* Player name */}
+          {/* OVR + POS column, top-left overlay */}
+          <div className="absolute left-5 top-5 z-10 flex flex-col items-center leading-none">
+            <span
+              className="text-[56px] font-black leading-none tabular-nums drop-shadow-lg"
+              style={{ color: theme.text, letterSpacing: '-0.04em' }}
+            >
+              {ovr}
+            </span>
+            <span
+              className="mt-1 text-sm font-extrabold uppercase tracking-[0.18em] drop-shadow-md"
+              style={{ color: theme.text }}
+            >
+              {positionLabel}
+            </span>
             <div
-              className="text-center"
-              style={{
-                color: theme.text,
-                borderBottom: `1px solid ${theme.accent}`,
-                paddingBottom: '6px',
-                opacity: 0.95,
-              }}
+              className="mt-2 h-px w-8"
+              style={{ background: theme.accent, opacity: 0.6 }}
+            />
+            <span className="mt-1 text-base drop-shadow" aria-hidden>
+              👟
+            </span>
+          </div>
+
+          {/* Bottom content block: name + stats + badges + tier */}
+          <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-12">
+            {/* Name */}
+            <div
+              className="border-b text-center pb-1.5 mb-2.5"
+              style={{ borderColor: theme.accent, color: theme.text }}
             >
               <h2
-                className="truncate text-2xl font-black uppercase tracking-tight"
-                style={{ letterSpacing: '-0.02em' }}
+                className="truncate text-2xl font-black uppercase"
+                style={{ letterSpacing: '-0.01em' }}
               >
                 {stats.name}
               </h2>
             </div>
 
-            {/* Stats grid — labels on top, values below (FUT layout) */}
-            <div className="mt-2 grid grid-cols-6 gap-x-1">
+            {/* Stats grid */}
+            <div className="grid grid-cols-6 gap-x-1">
               {statCells.map((s) => (
                 <div key={s.label} className="flex flex-col items-center">
                   <span
@@ -252,7 +255,7 @@ export function PlayerFifaCard({ stats, badges, hideDownload }: PlayerFifaCardPr
               ))}
             </div>
 
-            {/* Badges row */}
+            {/* Badges */}
             {badges.length > 0 && (
               <div className="mt-2 flex flex-wrap justify-center gap-1">
                 {badges.map((badge) => (
@@ -271,14 +274,18 @@ export function PlayerFifaCard({ stats, badges, hideDownload }: PlayerFifaCardPr
                 ))}
               </div>
             )}
+          </div>
 
-            {/* Tier label, bottom-center */}
-            <div
-              className="mt-2 text-center text-[10px] font-bold tracking-[0.35em]"
-              style={{ color: theme.accent, opacity: 0.7 }}
-            >
-              {theme.label} · {stats.matches_played} PJ
-            </div>
+          {/* Tier label, absolute at very bottom inside the taper */}
+          <div
+            className="absolute inset-x-0 z-10 text-center text-[10px] font-bold tracking-[0.3em]"
+            style={{
+              color: theme.accent,
+              opacity: 0.7,
+              bottom: '3.5%',
+            }}
+          >
+            {theme.label} · {stats.matches_played} PJ
           </div>
         </div>
       </div>
@@ -299,10 +306,6 @@ export function PlayerFifaCard({ stats, badges, hideDownload }: PlayerFifaCardPr
   );
 }
 
-/**
- * Resolve photo URL the same way PlayerAvatar does — bare filename means
- * local /players/<filename>. Keeps card and avatar consistent.
- */
 function resolvePhotoUrl(photoUrl?: string | null): string | null {
   if (!photoUrl) return null;
   if (photoUrl.includes('/') || photoUrl.startsWith('http')) return photoUrl;
