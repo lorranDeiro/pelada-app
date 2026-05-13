@@ -7,7 +7,7 @@ import { ComparisonStatsBars } from '@/components/comparison-stats-bars';
 import { WinProbabilityBar } from '@/components/win-probability-bar';
 import { getPlayerBadges } from '@/lib/achievements';
 import { supabase } from '@/lib/supabase';
-import { SwatchesPicker } from 'lucide-react';
+import { SwatchBook } from 'lucide-react';
 import type { SeasonStats } from '@/lib/types';
 
 interface Props {
@@ -59,9 +59,9 @@ export function PlayerComparison({ player1, allStats }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <span className="text-xl" aria-hidden>ðŸŠ</span>
+        <span className="text-xl" aria-hidden>🤺</span>
         <h3 className="text-sm font-semibold text-fs-text">
-          ComparaÃ§Ã£o de jogadores
+          Comparação de jogadores
         </h3>
       </div>
 
@@ -95,10 +95,10 @@ export function PlayerComparison({ player1, allStats }: Props) {
           ) : (
             <div className="flex h-[400px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-fs-border bg-fs-surface/30 p-8 text-center">
               <div className="mb-4 rounded-full bg-fs-surface-2 p-4">
-                <SwatchesPicker className="size-8 text-fs-text-dim opacity-20" />
+                <SwatchBook className="size-8 text-fs-text-dim opacity-20" />
               </div>
               <p className="text-sm font-medium text-fs-text-dim">
-                Selecione um adversÃ¡rio para iniciar o duelo
+                Selecione um adversário para iniciar o duelo
               </p>
             </div>
           )}
@@ -117,14 +117,14 @@ export function PlayerComparison({ player1, allStats }: Props) {
               <div className="flex items-center justify-between mb-4">
                 <div className="text-center flex-1">
                   <div className="text-3xl font-black text-fs-text">{h2h?.p1Wins ?? 0}</div>
-                  <div className="text-[10px] font-bold text-fs-text-dim uppercase">VitÃ³rias</div>
+                  <div className="text-[10px] font-bold text-fs-text-dim uppercase">Vitórias</div>
                 </div>
                 <div className="px-4 text-center">
                   <div className="text-sm font-bold text-fs-text-dim uppercase bg-fs-surface-2 px-3 py-1 rounded-full">Vs</div>
                 </div>
                 <div className="text-center flex-1">
                   <div className="text-3xl font-black text-fs-text">{h2h?.p2Wins ?? 0}</div>
-                  <div className="text-[10px] font-bold text-fs-text-dim uppercase">VitÃ³rias</div>
+                  <div className="text-[10px] font-bold text-fs-text-dim uppercase">Vitórias</div>
                 </div>
               </div>
               <div className="relative h-2 w-full rounded-full bg-fs-surface-2 overflow-hidden flex">
@@ -142,7 +142,7 @@ export function PlayerComparison({ player1, allStats }: Props) {
                 />
               </div>
               <div className="mt-3 text-center text-[10px] text-fs-text-dim font-medium uppercase tracking-tighter">
-                {h2h?.total ?? 0} Partidas disputadas â€¢ {h2h?.draws ?? 0} Empates
+                {h2h?.total ?? 0} Partidas disputadas • {h2h?.draws ?? 0} Empates
               </div>
             </div>
           </div>
@@ -151,8 +151,8 @@ export function PlayerComparison({ player1, allStats }: Props) {
 
           <div className="rounded-2xl border border-fs-border bg-fs-surface p-6 shadow-xl">
             <div className="mb-4 flex items-center gap-2">
-              <span className="text-base" aria-hidden>âš⚡</span>
-              <h4 className="text-sm font-semibold text-fs-text">Probabilidade EstatÃ­stica</h4>
+              <span className="text-base" aria-hidden>⚡</span>
+              <h4 className="text-sm font-semibold text-fs-text">Probabilidade Estatística</h4>
             </div>
             <WinProbabilityBar
               strengthA={player1.avg_rating}
