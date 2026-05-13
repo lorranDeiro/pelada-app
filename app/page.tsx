@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -28,7 +28,7 @@ export default function LandingPage() {
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-8 sm:px-6 lg:px-8">
         <header className="mb-12 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">âš½</span>
+            <span className="text-2xl">⚽</span>
             <span className="text-lg font-bold">Pelada App</span>
           </div>
           <div className="flex items-center gap-4">
@@ -53,14 +53,14 @@ export default function LandingPage() {
                 href="/login"
                 className="text-sm text-text-secondary transition hover:text-accent-bright"
               >
-                Entrar â†’
+                Entrar →
               </Link>
             )}
           </div>
         </header>
 
         <div className="mb-10 space-y-3 text-center sm:mb-16">
-          <h1 className="text-3xl font-bold sm:text-4xl">Quem estÃ¡ acessando?</h1>
+          <h1 className="text-3xl font-bold sm:text-4xl">Quem está acessando?</h1>
           <p className="text-text-secondary">
             Escolha seu perfil para continuar.
           </p>
@@ -70,7 +70,7 @@ export default function LandingPage() {
           <ProfileCard
             href="/jogador"
             label="Jogador"
-            description="Veja o ranking da liga e o histÃ³rico de partidas"
+            description="Veja o ranking da liga e o histórico de partidas"
             icon={<User className="size-16 text-accent" strokeWidth={1.5} />}
             ringColor="ring-accent/30 hover:ring-accent"
             glowColor="from-accent/20 to-accent/5"
@@ -88,7 +88,7 @@ export default function LandingPage() {
         </div>
 
         <footer className="mt-16 text-center text-xs text-text-secondary">
-          âš⚡ GestÃ£o inteligente das suas peladas
+          ⚡ Gestão inteligente das suas peladas
         </footer>
       </div>
     </main>

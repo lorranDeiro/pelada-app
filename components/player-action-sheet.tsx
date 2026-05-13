@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { Minus, Plus, Zap, Trophy, Goal, Hand } from 'lucide-react';
@@ -23,19 +23,19 @@ interface Props {
 }
 
 const BASE_ACTIONS: { type: EventType; label: string; icon?: React.ReactNode; tone?: 'danger' }[] = [
-  { type: 'GOAL', label: 'âš½ Gol', icon: <Goal className="size-4" /> },
-  { type: 'WINNING_GOAL', label: 'ðŸ”¥ Gol Decisivo', icon: <Zap className="size-4 text-amber-400" /> },
-  { type: 'ASSIST', label: 'ðŸ…°ï¸ AssistÃªncia', icon: <Hand className="size-4" /> },
-  { type: 'TACKLE', label: 'ðŸ›¡ï¸ Desarme' },
-  { type: 'CREATION', label: 'âœ¨ CriaÃ§Ã£o' },
-  { type: 'MISTAKE_LEADING_GOAL', label: 'ðŸ˜¬ Erro que virou gol', tone: 'danger' },
-  { type: 'OWN_GOAL', label: 'ðŸ¤¦ Gol contra', tone: 'danger' },
+  { type: 'GOAL', label: '⚽ Gol', icon: <Goal className="size-4" /> },
+  { type: 'WINNING_GOAL', label: '🔥 Gol Decisivo', icon: <Zap className="size-4 text-amber-400" /> },
+  { type: 'ASSIST', label: '🅰️ Assistência', icon: <Hand className="size-4" /> },
+  { type: 'TACKLE', label: '🛡️ Desarme' },
+  { type: 'CREATION', label: '✨ Criação' },
+  { type: 'MISTAKE_LEADING_GOAL', label: '😬 Erro que virou gol', tone: 'danger' },
+  { type: 'OWN_GOAL', label: '🤦 Gol contra', tone: 'danger' },
 ];
 
 const GK_ACTIONS: { type: EventType; label: string; icon?: React.ReactNode; tone?: 'danger' }[] = [
-  { type: 'SAVE', label: 'ðŸ§¤ Defesa', icon: <Trophy className="size-4 text-emerald-400" /> },
-  { type: 'PENALTY_SAVE', label: 'ðŸ§¤ PÃªnalti defendido' },
-  { type: 'GOAL_CONCEDED_GK', label: 'ðŸ˜£ Sofreu gol', tone: 'danger' },
+  { type: 'SAVE', label: '🧤 Defesa', icon: <Trophy className="size-4 text-emerald-400" /> },
+  { type: 'PENALTY_SAVE', label: '🧤 Pênalti defendido' },
+  { type: 'GOAL_CONCEDED_GK', label: '😫 Sofreu gol', tone: 'danger' },
 ];
 
 export function PlayerActionSheet({ player, isOnGoal, onClose, onPick }: Props) {
@@ -88,7 +88,7 @@ export function PlayerActionSheet({ player, isOnGoal, onClose, onPick }: Props) 
             <DialogTitle className="text-center text-xl">
               {player ? (
                 <span className="flex items-center justify-center gap-2">
-                  {isOnGoal && <span className="text-emerald-500">ðŸ§¤</span>}
+                  {isOnGoal && <span className="text-emerald-500">🧤</span>}
                   {player.name}
                 </span>
               ) : null}
