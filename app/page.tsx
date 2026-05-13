@@ -1,14 +1,26 @@
-'use client';
+﻿'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ShieldCheck, User } from 'lucide-react';
+import { ArrowRight, ShieldCheck, User, Activity } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
+import { supabase } from '@/lib/supabase';
 
 export default function LandingPage() {
   const { user, isAdmin, loading, signOut } = useAuth();
+  const [liveMatch, setLiveMatch] = useState<boolean>(false);
 
-  // Card do administrador é "smart": se já está logado e é admin, vai
-  // direto pro menu admin; caso contrário cai no /login.
+  useEffect(() => {
+    async function checkLive() {
+      const { count } = await supabase
+        .from('matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'LIVE');
+      setLiveMatch(!!count);
+    }
+    checkLive();
+  }, []);
+
   const adminHref = !loading && user && isAdmin ? '/admin/home' : '/login?role=admin';
 
   return (
@@ -16,28 +28,39 @@ export default function LandingPage() {
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-8 sm:px-6 lg:px-8">
         <header className="mb-12 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">⚽</span>
+            <span className="text-2xl">âš½</span>
             <span className="text-lg font-bold">Pelada App</span>
           </div>
-          {user ? (
-            <button
-              onClick={() => signOut()}
-              className="text-sm text-text-secondary transition hover:text-accent-bright"
-            >
-              Sair
-            </button>
-          ) : (
-            <Link
-              href="/login"
-              className="text-sm text-text-secondary transition hover:text-accent-bright"
-            >
-              Entrar →
-            </Link>
-          )}
+          <div className="flex items-center gap-4">
+            {liveMatch && (
+              <Link 
+                href="/historico-publico" 
+                className="flex items-center gap-1.5 rounded-full bg-fs-live/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-fs-live animate-pulse border border-fs-live/20"
+              >
+                <Activity className="size-3" />
+                Partida ao Vivo
+              </Link>
+            )}
+            {user ? (
+              <button
+                onClick={() => signOut()}
+                className="text-sm text-text-secondary transition hover:text-accent-bright"
+              >
+                Sair
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="text-sm text-text-secondary transition hover:text-accent-bright"
+              >
+                Entrar â†’
+              </Link>
+            )}
+          </div>
         </header>
 
         <div className="mb-10 space-y-3 text-center sm:mb-16">
-          <h1 className="text-3xl font-bold sm:text-4xl">Quem está acessando?</h1>
+          <h1 className="text-3xl font-bold sm:text-4xl">Quem estÃ¡ acessando?</h1>
           <p className="text-text-secondary">
             Escolha seu perfil para continuar.
           </p>
@@ -47,7 +70,7 @@ export default function LandingPage() {
           <ProfileCard
             href="/jogador"
             label="Jogador"
-            description="Veja o ranking da liga e o histórico de partidas"
+            description="Veja o ranking da liga e o histÃ³rico de partidas"
             icon={<User className="size-16 text-accent" strokeWidth={1.5} />}
             ringColor="ring-accent/30 hover:ring-accent"
             glowColor="from-accent/20 to-accent/5"
@@ -65,7 +88,7 @@ export default function LandingPage() {
         </div>
 
         <footer className="mt-16 text-center text-xs text-text-secondary">
-          ⚡ Gestão inteligente das suas peladas
+          âš⚡ GestÃ£o inteligente das suas peladas
         </footer>
       </div>
     </main>
@@ -100,8 +123,6 @@ function ProfileCard({
       <div
         className={`flex size-28 items-center justify-center rounded-full bg-background/60 ring-2 transition ${ringColor}`}
       >
-        {/* PLACEHOLDER: trocar pelo SVG de silhueta real, se desejar.
-            Caminho sugerido: /public/icons/silhouette-{player|admin}.svg */}
         {icon}
       </div>
       <div className="space-y-1 text-center">
