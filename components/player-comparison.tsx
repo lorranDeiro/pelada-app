@@ -28,12 +28,16 @@ export function PlayerComparison({ player1, allStats }: Props) {
   const [loadingH2h, setLoadingH2h] = useState(false);
 
   useEffect(() => {
+    // Verificamos explicitamente se player2 existe antes de disparar a busca
     if (!player2) {
       setH2h(null);
       return;
     }
 
     async function fetchH2H() {
+      // Garantimos ao TypeScript que player2 não é nulo dentro deste escopo
+      if (!player2) return;
+
       setLoadingH2h(true);
       try {
         // Busca partidas onde ambos estiveram presentes
