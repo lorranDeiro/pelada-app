@@ -81,6 +81,25 @@
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
 
+  /* =========================================================
+   * Brand tokens — Light mode
+   * Mapeados via tailwind.config.ts para bg-background,
+   * bg-surface, text-text-primary, etc.
+   * ========================================================= */
+  --brand-bg:              #f7f9fb;
+  --brand-bg-secondary:    #eef2f6;
+  --brand-bg-tertiary:     #e2e8f0;
+  --brand-bg-muted:        #ffffff;
+  --brand-surface:         #ffffff;
+  --brand-surface-hover:   #f1f5f9;
+  --brand-surface-active:  #e2e8f0;
+  --brand-surface-border:  #cbd5e1;
+  --brand-text-primary:    #0f172a;
+  --brand-text-secondary:  #475569;
+  --brand-text-muted:      #64748b;
+  --brand-gradient-premium: linear-gradient(135deg, #f7f9fb 0%, #eef2f6 100%);
+  --brand-gradient-dark-overlay: linear-gradient(180deg, rgba(248,250,252,0.8) 0%, rgba(248,250,252,0.95) 100%);
+
   /* Flashscore-inspired palette (dark-first, usado opt-in via var(--fs-*)) */
   --fs-bg:        oklch(0.15 0.01 260);  /* fundo quase-preto azulado */
   --fs-surface:   oklch(0.19 0.015 260); /* cards */
@@ -128,6 +147,21 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+
+  /* Brand tokens — Dark mode (paleta premium original) */
+  --brand-bg:              #0f172a;
+  --brand-bg-secondary:    #1a2335;
+  --brand-bg-tertiary:     #232f42;
+  --brand-bg-muted:        #0d1117;
+  --brand-surface:         #1a2335;
+  --brand-surface-hover:   #232f42;
+  --brand-surface-active:  #2d3f55;
+  --brand-surface-border:  #3a4a62;
+  --brand-text-primary:    #e2e8f0;
+  --brand-text-secondary:  #94a3b8;
+  --brand-text-muted:      #64748b;
+  --brand-gradient-premium: linear-gradient(135deg, #0f172a 0%, #1a2335 100%);
+  --brand-gradient-dark-overlay: linear-gradient(180deg, rgba(15,23,42,0.8) 0%, rgba(15,23,42,0.95) 100%);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

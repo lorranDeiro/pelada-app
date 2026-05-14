@@ -11,27 +11,26 @@ const config: Config = {
       colors: {
         // ============================================
         // PALETA PREMIUM - Inspirada em Sofascore/Betclic
+        // Brand tokens via CSS vars (light + dark mode swap)
         // ============================================
-        
-        // Fundos - Tons escuros/chumbo elegantes
+
         background: {
-          DEFAULT: '#0f172a', // Azul escuro profundo
-          secondary: '#1a2335', // Cinza azulado
-          tertiary: '#232f42', // Mais claro para surface
-          muted: '#0d1117',    // Muito escuro para componentes
+          DEFAULT: 'var(--brand-bg)',
+          secondary: 'var(--brand-bg-secondary)',
+          tertiary: 'var(--brand-bg-tertiary)',
+          muted: 'var(--brand-bg-muted)',
         },
-        
-        // Accents - Vibrantes e desportivos
+
+        // Accents — vibrantes, iguais em ambos os modos
         accent: {
-          DEFAULT: '#22c55e', // Verde energia (principal)
-          bright: '#4ade80',  // Verde luminoso
-          dark: '#16a34a',    // Verde escuro
-          secondary: '#0ea5e9', // Azul elétrico
-          warning: '#f59e0b', // Âmbar para alertas
-          danger: '#ef4444',  // Vermelho para crítico
+          DEFAULT: '#22c55e',
+          bright: '#4ade80',
+          dark: '#16a34a',
+          secondary: '#0ea5e9',
+          warning: '#f59e0b',
+          danger: '#ef4444',
         },
-        
-        // Grays/Neutros sofisticados
+
         neutral: {
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -45,29 +44,27 @@ const config: Config = {
           900: '#0f172a',
           950: '#020617',
         },
-        
-        // Superfícies para Cards e componentes
+
         surface: {
-          DEFAULT: '#1a2335',
-          hover: '#232f42',
-          active: '#2d3f55',
-          border: '#3a4a62',
+          DEFAULT: 'var(--brand-surface)',
+          hover: 'var(--brand-surface-hover)',
+          active: 'var(--brand-surface-active)',
+          border: 'var(--brand-surface-border)',
         },
-        
-        // Text colors
+
         text: {
-          primary: '#e2e8f0',   // Light gray para texto principal
-          secondary: '#94a3b8', // Medium gray para texto secundário
-          muted: '#64748b',     // Muted gray
-          accent: '#22c55e',    // Verde para destaques
+          primary: 'var(--brand-text-primary)',
+          secondary: 'var(--brand-text-secondary)',
+          muted: 'var(--brand-text-muted)',
+          accent: '#22c55e',
         },
       },
-      
-      // Gradientes customizados
+
+      // Gradientes customizados (gradient-premium acompanha o tema)
       backgroundImage: {
-        'gradient-premium': 'linear-gradient(135deg, #0f172a 0%, #1a2335 100%)',
+        'gradient-premium': 'var(--brand-gradient-premium)',
         'gradient-accent': 'linear-gradient(135deg, #22c55e 0%, #0ea5e9 100%)',
-        'gradient-dark-overlay': 'linear-gradient(180deg, rgba(15,23,42,0.8) 0%, rgba(15,23,42,0.95) 100%)',
+        'gradient-dark-overlay': 'var(--brand-gradient-dark-overlay)',
       },
       
       // Shadows elegantes
@@ -78,10 +75,10 @@ const config: Config = {
         'glow': '0 0 20px rgba(34, 197, 94, 0.15)',
       },
       
-      // Borders sofisticados
+      // Borders sofisticados (DEFAULT acompanha o tema)
       borderColor: {
-        DEFAULT: '#3a4a62',
-        muted: '#2d3f55',
+        DEFAULT: 'var(--brand-surface-border)',
+        muted: 'var(--brand-surface-active)',
         accent: '#22c55e',
       },
       

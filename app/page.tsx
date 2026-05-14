@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, User, Activity } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { supabase } from '@/lib/supabase';
 
 export default function LandingPage() {
@@ -24,14 +25,14 @@ export default function LandingPage() {
   const adminHref = !loading && user && isAdmin ? '/admin/home' : '/login?role=admin';
 
   return (
-    <main className="min-h-screen bg-gradient-premium text-text-primary">
+    <main className="min-h-screen bg-background text-text-primary">
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-8 sm:px-6 lg:px-8">
         <header className="mb-12 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">⚽</span>
             <span className="text-lg font-bold">Pelada App</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {liveMatch && (
               <Link 
                 href="/historico-publico" 
@@ -41,6 +42,7 @@ export default function LandingPage() {
                 Partida ao Vivo
               </Link>
             )}
+            <ThemeToggle />
             {user ? (
               <button
                 onClick={() => signOut()}

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/components/auth-provider';
 import { cn } from '@/lib/utils';
 
@@ -41,9 +42,12 @@ export function AppNav() {
             );
           })}
         </div>
-        <Button size="sm" variant="ghost" onClick={signOut} aria-label="Sair">
-          <LogOut className="size-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <Button size="sm" variant="ghost" onClick={signOut} aria-label="Sair">
+            <LogOut className="size-4" />
+          </Button>
+        </div>
       </nav>
     </header>
   );

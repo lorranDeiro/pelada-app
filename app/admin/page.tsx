@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, MessageSquare, Swords, Users, Upload } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { RequireAuth } from '@/components/require-auth';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function AdminHubPage() {
   return (
@@ -32,17 +33,22 @@ function AdminHubContent() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-premium text-text-primary">
-      <div className="mx-auto w-full max-w-5xl px-4 py-8">
-        <Link
-          href="/admin/home"
-          className="mb-8 inline-flex items-center gap-1.5 text-sm text-text-secondary transition hover:text-accent-bright"
-        >
-          <ArrowLeft className="size-4" /> Voltar ao menu
-        </Link>
+    <main className="min-h-screen bg-background text-text-primary">
+      <header className="sticky top-0 z-10 border-b border-surface-border/40 bg-background/80 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
+          <Link
+            href="/admin/home"
+            className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition hover:text-accent-bright"
+          >
+            <ArrowLeft className="size-4" /> Menu Principal
+          </Link>
+          <ThemeToggle />
+        </div>
+      </header>
 
-        <header className="mb-10 space-y-2 text-center">
-          <h1 className="text-3xl font-bold">Painel de Administração</h1>
+      <div className="mx-auto w-full max-w-5xl px-4 py-12 space-y-10">
+        <header className="space-y-2 text-center">
+          <h1 className="text-3xl font-bold">Administração</h1>
           <p className="text-text-secondary">
             Gerencie elenco, partidas, comentários e dados
           </p>
@@ -51,27 +57,27 @@ function AdminHubContent() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <HubCard
             href="/elenco"
-            icon={<Users className="size-10 text-accent" />}
+            icon={<Users className="size-8 text-accent" />}
             title="Elenco"
-            description="Cadastrar e editar jogadores"
+            description="Jogadores e níveis"
           />
           <HubCard
             href="/admin/partidas"
-            icon={<Swords className="size-10 text-accent-secondary" />}
+            icon={<Swords className="size-8 text-accent-secondary" />}
             title="Partidas"
-            description="Editar partidas finalizadas"
+            description="Editar resultados"
           />
           <HubCard
             href="/admin/comentarios"
-            icon={<MessageSquare className="size-10 text-accent-bright" />}
+            icon={<MessageSquare className="size-8 text-accent-bright" />}
             title="Comentários"
-            description="Moderar comentários públicos"
+            description="Moderar painel"
           />
           <HubCard
             href="/admin/importar"
-            icon={<Upload className="size-10 text-amber-500" />}
+            icon={<Upload className="size-8 text-amber-500" />}
             title="Importar CSV"
-            description="Carregar dados de temporadas passadas"
+            description="Dados históricos"
           />
         </div>
       </div>
@@ -93,13 +99,15 @@ function HubCard({
   return (
     <Link
       href={href}
-      className="group flex flex-col gap-3 rounded-2xl border border-surface-border bg-surface p-6 transition hover:scale-[1.02] hover:border-accent hover:shadow-2xl"
+      className="group flex flex-col gap-3 rounded-2xl border border-surface-border bg-surface p-6 transition hover:scale-[1.02] hover:border-accent hover:shadow-premium"
     >
-      <div className="flex size-16 items-center justify-center rounded-xl bg-background/60 transition group-hover:scale-105">
+      <div className="flex size-14 items-center justify-center rounded-xl bg-background/60 transition group-hover:scale-110">
         {icon}
       </div>
-      <h2 className="text-lg font-bold">{title}</h2>
-      <p className="text-sm text-text-secondary">{description}</p>
+      <div className="space-y-1">
+        <h2 className="text-lg font-bold leading-tight">{title}</h2>
+        <p className="text-sm text-text-secondary">{description}</p>
+      </div>
     </Link>
   );
 }
