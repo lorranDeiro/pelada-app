@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { Match, Player } from '@/lib/types';
-import { ArrowLeft, Calendar, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Users, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CommentForm } from '@/components/comment-form';
@@ -14,11 +14,13 @@ import { ptBR } from 'date-fns/locale';
 import { HistoryFiltersComponent, type HistoryFilters } from '@/components/history-filters';
 import { getPlayersForFilter } from '@/lib/matches';
 import { DataExport } from '@/components/data-export';
-import { MatchStatsTable } from '@/components/match-stats-table';
+import { MatchHistoryCarousel } from '@/components/match-history-carousel';
+import { MatchStatsGrid } from '@/components/match-stats-grid';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { cn } from '@/lib/utils';
 
 interface MatchWithDetails extends Match {
   mvp?: Player | null;
-  playerStats?: Record<string, any>[];
 }
 
 export default function PublicHistoryPage() {
@@ -135,45 +137,44 @@ export default function PublicHistoryPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background text-text-primary">
         <div className="text-center">
-          <div className="animate-spin mb-4">
-            <Calendar className="h-12 w-12 text-green-500" />
-          </div>
-          <p className="text-gray-300">Carregando histórico...</p>
+          <Calendar className="mx-auto mb-4 h-12 w-12 animate-bounce text-accent" />
+          <p className="text-text-secondary">Carregando histórico...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-8 shadow-lg">
-        <div className="max-w-4xl mx-auto space-y-3">
+    <div className="min-h-screen bg-background text-text-primary">
+      <header className="sticky top-0 z-10 border-b border-surface-border/40 bg-background/80 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-4xl items-center justify-between px-4 py-3">
           <Button
             size="sm"
             variant="ghost"
             onClick={() => router.back()}
-            className="gap-1 text-blue-100 hover:bg-white/10 hover:text-white"
-            aria-label="Voltar"
+            className="gap-1 text-text-secondary hover:text-accent-bright"
           >
             <ArrowLeft className="size-4" />
             Voltar
           </Button>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-8 w-8" />
-              <h1 className="text-3xl font-bold">Histórico de Partidas</h1>
-            </div>
+          <div className="flex items-center gap-2">
             <DataExport exportType="both" />
+            <ThemeToggle />
           </div>
-          <p className="text-blue-100">Veja os resultados, deixe comentários e exporte dados</p>
         </div>
-      </div>
+      </header>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="mx-auto max-w-4xl px-4 py-8 space-y-8">
+        <header className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">Histórico de Partidas</h1>
+          <p className="text-text-secondary">Explore resultados, estatísticas e comentários.</p>
+        </header>
+
+        {/* Carousel: Ultimas Partidas (Destaque) */}
+        <MatchHistoryCarousel matches={matches.slice(0, 5)} />
+
         {/* Filters */}
         {matches.length > 0 && (
           <HistoryFiltersComponent 
@@ -182,153 +183,169 @@ export default function PublicHistoryPage() {
           />
         )}
 
-        {/* Matches */}
-        {filteredMatches.length === 0 ? (
-          <Card className="p-8 text-center bg-gray-800 border-gray-700">
-            <p className="text-gray-400">
-              {matches.length === 0
-                ? 'Nenhuma partida registrada ainda.'
-                : 'Nenhuma partida encontrada com os filtros aplicados.'}
-            </p>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            <p className="text-sm text-gray-400">
-              Mostrando <strong>{filteredMatches.length}</strong> de{' '}
-              <strong>{matches.length}</strong> partida
-              {matches.length !== 1 ? 's' : ''}
-            </p>
-
-            {filteredMatches.map((match) => {
-              const isExpanded = selectedMatch === match.id;
-
-              const winnerTeam =
-                match.score_a > match.score_b
-                  ? { name: match.team_a_name, score: match.score_a }
-                  : { name: match.team_b_name, score: match.score_b };
-
-              const loserTeam =
-                match.score_a < match.score_b
-                  ? { name: match.team_a_name, score: match.score_a }
-                  : { name: match.team_b_name, score: match.score_b };
-
-              return (
-                <Card
-                  key={match.id}
-                  className="bg-gradient-to-r from-gray-800 to-gray-700 border-gray-600 overflow-hidden cursor-pointer hover:border-green-500 transition"
-                  onClick={() => setSelectedMatch(isExpanded ? null : match.id)}
-                >
-                  {/* Match Header - Click to expand */}
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-400">
-                        {format(new Date(match.played_at), 'dd MMM yyyy', {
-                          locale: ptBR,
-                        })}
-                      </div>
-                      <div
-                        className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                          match.score_a === match.score_b
-                            ? 'bg-gray-600 text-gray-200'
-                            : 'bg-green-600 text-white'
-                        }`}
-                      >
-                        {match.score_a === match.score_b ? 'Empate' : 'Finalizado'}
-                      </div>
-                    </div>
-
-                    {/* Score Display */}
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 text-right space-y-1">
-                        <div className="text-xl font-bold">{match.team_a_name}</div>
-                        <div className="text-3xl font-bold text-green-400">
-                          {match.score_a}
-                        </div>
-                      </div>
-
-                      <div className="text-gray-500 font-bold">×</div>
-
-                      <div className="flex-1 text-left space-y-1">
-                        <div className="text-xl font-bold">{match.team_b_name}</div>
-                        <div className="text-3xl font-bold text-blue-400">
-                          {match.score_b}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* MVP Badge */}
-                    {match.mvp && (
-                      <div className="flex items-center gap-2 p-2 bg-yellow-500/20 border border-yellow-500/30 rounded text-yellow-300 text-sm">
-                        <Trophy className="h-4 w-4" />
-                        <span>
-                          <strong>MVP:</strong> {match.mvp.name}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Expanded Content */}
-                  {isExpanded && (
-                    <div className="border-t border-gray-600 p-4 space-y-6 bg-gray-900/50">
-                      {/* Notas do Admin */}
-                      {match.notes && (
-                        <div className="space-y-2">
-                          <h4 className="font-semibold text-sm text-gray-300">
-                            Anotações
-                          </h4>
-                          <p className="text-sm text-gray-300 bg-gray-800 p-3 rounded">
-                            {match.notes}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Stats por jogador (estilo FIFA) */}
-                      <div className="space-y-2">
-                        <h4 className="flex items-center gap-2 text-sm font-semibold text-gray-300">
-                          <Trophy className="h-4 w-4" />
-                          Estatísticas dos jogadores
-                        </h4>
-                        <MatchStatsTable
-                          matchId={match.id}
-                          teamAName={match.team_a_name}
-                          teamBName={match.team_b_name}
-                        />
-                      </div>
-
-                      {/* Comments Section */}
-                      <div className="space-y-4">
-                        <h4 className="font-semibold text-sm text-gray-300 flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          Comentários
-                        </h4>
-
-                        <CommentsList
-                          matchId={match.id}
-                          refreshTrigger={refreshComments}
-                        />
-
-                        <CommentForm
-                          matchId={match.id}
-                          onCommentAdded={() =>
-                            setRefreshComments((prev) => prev + 1)
-                          }
-                        />
-                      </div>
-                    </div>
-                  )}
-                </Card>
-              );
-            })}
+        {/* Matches List */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-text-secondary">
+              Todos os Jogos
+            </h2>
+            <span className="text-xs text-text-muted">
+              {filteredMatches.length} partidas encontradas
+            </span>
           </div>
-        )}
 
-        {/* Footer Info */}
-        <div className="mt-8 p-4 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-400 space-y-2">
-          <p>💬 Clique em uma partida para ver mais detalhes e deixar comentários.</p>
-          <p>Os comentários são verificados antes de aparecer para manter a qualidade.</p>
-          <p>📊 Use os filtros acima para buscar partidas específicas ou exporte todos os dados.</p>
-        </div>
+          {filteredMatches.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-surface-border bg-surface/40 p-12 text-center">
+              <p className="text-text-secondary">
+                Nenhum resultado para os filtros aplicados.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredMatches.map((match) => (
+                <MatchHistoryItem
+                  key={match.id}
+                  match={match}
+                  isExpanded={selectedMatch === match.id}
+                  onToggle={() => setSelectedMatch(selectedMatch === match.id ? null : match.id)}
+                  refreshComments={refreshComments}
+                  onCommentAdded={() => setRefreshComments((prev) => prev + 1)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
+  );
+}
+
+function MatchHistoryItem({
+  match,
+  isExpanded,
+  onToggle,
+  refreshComments,
+  onCommentAdded,
+}: {
+  match: MatchWithDetails;
+  isExpanded: boolean;
+  onToggle: () => void;
+  refreshComments: number;
+  onCommentAdded: () => void;
+}) {
+  const isDraw = match.score_a === match.score_b;
+  const dateStr = format(new Date(match.played_at), 'dd MMM yyyy', { locale: ptBR });
+
+  return (
+    <Card
+      className={cn(
+        'overflow-hidden border-surface-border bg-surface transition-all duration-300',
+        isExpanded ? 'ring-2 ring-accent/20' : 'hover:border-accent/40'
+      )}
+    >
+      {/* Header Item */}
+      <div
+        className="cursor-pointer p-4 sm:p-5"
+        onClick={onToggle}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-text-secondary">
+            <Calendar className="size-3.5" />
+            {dateStr}
+          </div>
+          <Badge variant={isDraw ? 'outline' : 'secondary'} className={isDraw ? '' : 'bg-accent/10 text-accent border-accent/20'}>
+            {isDraw ? 'Empate' : 'Finalizado'}
+          </Badge>
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 text-center sm:text-right">
+            <div className="text-sm font-black uppercase tracking-tighter text-text-secondary sm:text-base">
+              {match.team_a_name}
+            </div>
+            <div className="text-3xl font-black text-text-primary sm:text-4xl">
+              {match.score_a}
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-xl font-black text-text-muted">VS</span>
+            {isExpanded ? <ChevronUp className="size-4 text-text-muted" /> : <ChevronDown className="size-4 text-text-muted" />}
+          </div>
+
+          <div className="flex-1 text-center sm:text-left">
+            <div className="text-sm font-black uppercase tracking-tighter text-text-secondary sm:text-base">
+              {match.team_b_name}
+            </div>
+            <div className="text-3xl font-black text-text-primary sm:text-4xl">
+              {match.score_b}
+            </div>
+          </div>
+        </div>
+
+        {match.mvp && !isExpanded && (
+          <div className="mt-4 flex items-center justify-center gap-2 rounded-full bg-yellow-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-yellow-500 border border-yellow-500/20">
+            <Trophy className="size-3" />
+            MVP: {match.mvp.name}
+          </div>
+        )}
+      </div>
+
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="border-t border-surface-border bg-background/40 p-4 sm:p-6 space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+          {/* Notes */}
+          {match.notes && (
+            <div className="space-y-3">
+              <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
+                <MapPin className="size-3.5" />
+                Local & Observações
+              </h4>
+              <div className="rounded-xl border border-surface-border bg-surface p-4 text-sm text-text-secondary leading-relaxed shadow-sm">
+                {match.notes}
+              </div>
+            </div>
+          )}
+
+          {/* Detailed Stats */}
+          <div className="space-y-4">
+            <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
+              <Trophy className="size-3.5" />
+              Estatísticas da Partida
+            </h4>
+            <MatchStatsGrid
+              matchId={match.id}
+              teamAName={match.team_a_name}
+              teamBName={match.team_b_name}
+              scoreA={match.score_a}
+              scoreB={match.score_b}
+              mvpId={match.mvp_player_id}
+            />
+          </div>
+
+          {/* Comments Section */}
+          <div className="space-y-6 pt-4 border-t border-surface-border/60">
+            <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
+              <Users className="size-3.5" />
+              Comentários ({refreshComments >= 0 ? 'Resenha' : ''})
+            </h4>
+
+            <div className="space-y-6">
+              <CommentsList
+                matchId={match.id}
+                refreshTrigger={refreshComments}
+              />
+
+              <div className="rounded-2xl border border-surface-border bg-surface p-4 sm:p-6 shadow-sm">
+                <CommentForm
+                  matchId={match.id}
+                  onCommentAdded={onCommentAdded}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
