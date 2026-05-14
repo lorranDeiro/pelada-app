@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { PlayerFifaCard } from '@/components/player-fifa-card';
 import { PlayerSelector } from '@/components/player-selector';
 import { ComparisonStatsBars } from '@/components/comparison-stats-bars';

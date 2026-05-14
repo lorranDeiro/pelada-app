@@ -27,6 +27,7 @@ import { PlayerPerformanceChart } from '@/components/charts/player-performance-c
 import { PlayerProgressChart } from '@/components/charts/player-progress-chart';
 import { SeasonOverviewChart } from '@/components/charts/season-overview-chart';
 import { getPlayerBadges } from '@/lib/achievements';
+import { cn } from '@/lib/utils';
 
 interface SeasonWithStats {
   season: Season;
