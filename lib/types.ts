@@ -117,6 +117,7 @@ export interface SeasonStats {
 export interface RankedPlayer extends Player {
   season_points: number;
   matches_played_season: number;
+  avg_rating?: number;
 }
 
 export interface MatchComment {

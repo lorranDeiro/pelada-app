@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Trophy, User } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, User, Sparkles } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { ThemeToggle } from '@/components/theme-toggle';
 
@@ -43,18 +43,24 @@ export default function PlayerMenuPage() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <MenuCard
             href="/ranking"
             icon={<Trophy className="size-8 text-accent" />}
-            title="Ranking da Liga"
-            description="Sua posição e estatísticas da temporada"
+            title="Ranking"
+            description="Stats da Liga"
           />
           <MenuCard
             href="/historico-publico"
             icon={<Calendar className="size-8 text-accent-secondary" />}
-            title="Histórico de Partidas"
-            description="Resultados, MVPs e detalhes"
+            title="Histórico"
+            description="Resultados"
+          />
+          <MenuCard
+            href="/simulador"
+            icon={<Sparkles className="size-8 text-amber-500" />}
+            title="Simulador"
+            description="Pré-jogo Pro"
           />
         </div>
 

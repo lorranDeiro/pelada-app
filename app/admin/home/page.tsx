@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Calendar,
+  MessageSquare,
   Settings,
   Sparkles,
   Trophy,
@@ -171,24 +172,30 @@ function AdminHomeContent() {
           </section>
         )}
 
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MenuCard
             href="/ranking"
             icon={<Trophy className="size-7 text-accent" />}
             title="Ranking"
-            description="Estatísticas e posições"
+            description="Líderes"
           />
           <MenuCard
             href="/historico-publico"
             icon={<Calendar className="size-7 text-accent-secondary" />}
             title="Histórico"
-            description="Partidas anteriores"
+            description="Resultados"
+          />
+          <MenuCard
+            href="/simulador"
+            icon={<Sparkles className="size-7 text-amber-500" />}
+            title="Simulador"
+            description="Pré-jogo"
           />
           <MenuCard
             href="/admin"
-            icon={<Settings className="size-7 text-accent-bright" />}
-            title="Administração"
-            description="Elenco, partidas, comentários"
+            icon={<Settings className="size-7 text-text-muted" />}
+            title="Ajustes"
+            description="Painel Pro"
           />
         </section>
       </div>
