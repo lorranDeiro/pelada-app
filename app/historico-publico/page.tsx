@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import type { Match, Player } from '@/lib/types';
 import { ArrowLeft, Calendar, Trophy, Users, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { CommentForm } from '@/components/comment-form';
 import { CommentsList } from '@/components/comments-list';
