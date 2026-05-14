@@ -4,11 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toPng } from 'html-to-image';
 import { saveAs } from 'file-saver';
-import { ArrowLeft, Trophy, Download } from 'lucide-react';
+import { ArrowLeft, Trophy, Download, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import type { SeasonStats, Season } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ import { DataExport } from '@/components/data-export';
 import { PlayerFifaCard } from '@/components/player-fifa-card';
 import { PlayerComparison } from '@/components/player-comparison';
 import { RankingTable } from '@/components/ranking-table';
+import { RankingPodium } from '@/components/ranking-podium';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PercentileRadarChart } from '@/components/charts/percentile-radar-chart';
 import { PlayerPerformanceChart } from '@/components/charts/player-performance-chart';
@@ -36,6 +38,7 @@ export default function PublicRankingPage() {
   const [seasons, setSeasons] = useState<SeasonWithStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [cardPlayerId, setCardPlayerId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const tableRef = useRef<HTMLDivElement | null>(null);
@@ -144,6 +147,12 @@ export default function PublicRankingPage() {
   );
 
   const displayStats = selectedTab === 'global' ? globalStats : stats;
+  const filteredStats = useMemo(() => {
+    if (!searchQuery) return displayStats;
+    const q = searchQuery.toLowerCase();
+    return displayStats.filter((s) => s.name.toLowerCase().includes(q));
+  }, [displayStats, searchQuery]);
+
   const displaySeason =
     selectedTab === 'global'
       ? { name: 'Ranking Global (All-Time)', id: 'global' }
@@ -196,105 +205,150 @@ export default function PublicRankingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-fs-bg text-fs-text">
-      <header className="border-b border-fs-border bg-fs-surface">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => router.back()}
-              className="gap-1 text-fs-text-dim hover:bg-fs-surface-2 hover:text-fs-text"
-              aria-label="Voltar"
-            >
-              <ArrowLeft className="size-4" />
-              <span className="hidden sm:inline">Voltar</span>
-            </Button>
-            <div className="flex size-9 items-center justify-center rounded-full bg-fs-accent/15 text-fs-accent">
-              <Trophy className="size-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold leading-tight">Ranking</h1>
-              <p className="text-xs text-fs-text-dim">{displaySeason.name}</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-background text-text-primary">
+      <header className="sticky top-0 z-10 border-b border-surface-border/40 bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => router.back()}
+            className="gap-1 text-text-secondary hover:text-accent-bright"
+            aria-label="Voltar"
+          >
+            <ArrowLeft className="size-4" />
+            <span className="hidden sm:inline">Voltar</span>
+          </Button>
+          
           <div className="flex items-center gap-2">
             <Button
               size="sm"
               variant="outline"
               onClick={handleExportTable}
               disabled={exporting || displayStats.length === 0}
-              className="gap-2 border-fs-border bg-fs-surface text-fs-text hover:bg-fs-surface-2"
+              className="gap-2 border-surface-border bg-surface text-text-primary hover:bg-surface-hover"
               data-html-to-image-ignore="true"
             >
               <Download className="size-4" />
-              {exporting ? 'Gerando…' : 'PNG'}
+              <span className="hidden xs:inline">{exporting ? 'Gerando…' : 'Exportar PNG'}</span>
             </Button>
-            <div data-html-to-image-ignore="true">
+            <div data-html-to-image-ignore="true" className="hidden xs:block">
               <DataExport exportType="ranking" />
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        {/* Season Tabs */}
-        {seasons.length > 0 && (
-          <div className="mb-6 overflow-x-auto">
-            <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-              <TabsList className="inline-flex gap-1 bg-transparent">
-                {seasons.map((sw) => (
-                  <TabsTrigger
-                    key={sw.season.id}
-                    value={sw.season.id}
-                    className="rounded-lg border border-fs-border bg-fs-surface data-[state=active]:border-fs-accent data-[state=active]:bg-fs-surface-2"
-                  >
-                    {sw.season.name}
-                  </TabsTrigger>
-                ))}
-                <TabsTrigger
-                  value="global"
-                  className="rounded-lg border border-fs-border bg-fs-surface data-[state=active]:border-fs-accent data-[state=active]:bg-fs-surface-2"
+      <main className="mx-auto max-w-5xl px-4 py-8 space-y-10">
+        {/* Hero Header */}
+        <section>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+            <div className="space-y-1">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-accent">LEADERBOARD</h2>
+              <h1 className="text-4xl font-black tracking-tight sm:text-5xl uppercase italic">Classificação</h1>
+              <p className="text-text-secondary text-lg">Métricas de precisão para cada membro do elenco.</p>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-text-muted" />
+              <Input
+                type="text"
+                placeholder="Buscar jogador..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-12 bg-surface border-surface-border focus:ring-accent/20 rounded-xl"
+              />
+            </div>
+          </div>
+
+          {/* Custom Tabs */}
+          {seasons.length > 0 && (
+            <div className="flex bg-surface-container rounded-2xl p-1.5 border border-surface-border">
+              {seasons.map((sw) => (
+                <button
+                  key={sw.season.id}
+                  onClick={() => setSelectedTab(sw.season.id)}
+                  className={cn(
+                    "flex-1 py-2.5 px-4 font-bold text-[10px] sm:text-xs uppercase tracking-widest rounded-xl transition-all",
+                    selectedTab === sw.season.id
+                      ? "bg-surface text-accent shadow-premium"
+                      : "text-text-muted hover:text-text-primary hover:bg-surface/50"
+                  )}
                 >
-                  🌍 Global
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+                  {sw.season.name}
+                </button>
+              ))}
+              <button
+                onClick={() => setSelectedTab('global')}
+                className={cn(
+                  "flex-1 py-2.5 px-4 font-bold text-[10px] sm:text-xs uppercase tracking-widest rounded-xl transition-all",
+                  selectedTab === 'global'
+                    ? "bg-surface text-accent shadow-premium"
+                    : "text-text-muted hover:text-text-primary hover:bg-surface/50"
+                )}
+              >
+                🌍 Global
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* Top 3 Podium */}
+        {!searchQuery && (
+          <RankingPodium stats={displayStats} onOpenCard={setCardPlayerId} />
         )}
 
-        {displayStats.length === 0 ? (
-          <div className="rounded-lg border border-fs-border bg-fs-surface p-8 text-center text-sm text-fs-text-dim">
-            Ainda não há dados para este período.
+        {/* Main List */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-2">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+              Tabela de Performance
+            </h2>
+            <span className="text-[10px] text-text-muted font-medium">
+              {filteredStats.length} Jogadores registrados
+            </span>
           </div>
-        ) : (
-          <div ref={tableRef} className="rounded-lg bg-fs-bg p-2">
-            <RankingTable stats={displayStats} onOpenCard={setCardPlayerId} />
-          </div>
-        )}
 
-        {currentSeasonData?.season.id && displayStats.length > 0 && selectedTab !== 'global' && (
+          {filteredStats.length === 0 ? (
+            <div className="rounded-2xl border-2 border-dashed border-surface-border bg-surface/30 p-12 text-center text-sm text-text-muted">
+              Nenhum jogador encontrado com "{searchQuery}".
+            </div>
+          ) : (
+            <div ref={tableRef} className="rounded-2xl bg-surface border border-surface-border overflow-hidden shadow-sm">
+              <RankingTable stats={filteredStats} onOpenCard={setCardPlayerId} />
+              
+              <div className="bg-background/40 p-4 text-center border-t border-surface-border/60">
+                <p className="text-[10px] text-text-muted font-bold uppercase tracking-tighter">
+                  Role para ver todos • Atualizado em tempo real
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {currentSeasonData?.season.id && displayStats.length > 0 && selectedTab !== 'global' && !searchQuery && (
           <section
-            className="mt-6 rounded-lg border border-fs-border bg-fs-surface p-4"
+            className="rounded-2xl border border-surface-border bg-surface p-6 shadow-sm"
             data-html-to-image-ignore="true"
           >
-            <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="text-sm font-semibold text-fs-text">
-                Visão geral da temporada
+            <div className="mb-6 flex items-baseline justify-between">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-text-primary">
+                Visão Geral da Temporada
               </h2>
-              <span className="text-[10px] uppercase tracking-wider text-fs-text-dim">
-                Gols · Assist. · Decisões
+              <span className="text-[10px] uppercase tracking-tighter text-text-muted font-bold">
+                Gols · Assistências · Decisões
               </span>
             </div>
             <SeasonOverviewChart seasonId={currentSeasonData.season.id} />
           </section>
         )}
 
-        <div className="mt-6 rounded-lg border border-fs-border bg-fs-surface px-4 py-3 text-xs text-fs-text-dim">
+        <div className="rounded-2xl border border-surface-border bg-surface p-4 text-[10px] sm:text-xs text-text-muted flex items-center gap-3">
+          <Trophy className="size-4 text-accent shrink-0" />
           <p>
-            💡 {selectedTab === 'global'
-              ? 'Ranking acumulado de todas as temporadas.'
-              : 'Ranking público da temporada, atualizado em tempo real.'}
+            {selectedTab === 'global'
+              ? 'O Ranking Global acumula todos os pontos conquistados pelo jogador em todas as temporadas registradas.'
+              : 'O Ranking da Temporada é baseado nos critérios de pontuação vigentes para o período selecionado.'}
           </p>
         </div>
       </main>

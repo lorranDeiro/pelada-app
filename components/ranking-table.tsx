@@ -57,12 +57,20 @@ export function RankingTable({ stats, onOpenCard }: Props) {
                     )}
                   </div>
                 </div>
-                <div className="shrink-0 text-right">
+                <div className="shrink-0 text-right space-y-1">
                   <div className="font-mono text-base font-bold tabular-nums text-fs-accent">
                     {p.total_points.toFixed(0)}
                   </div>
-                  <div className="font-mono text-[10px] tabular-nums text-fs-text-dim">
-                    ★ {(p.dynamic_rating ?? 0).toFixed(1)}
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="font-mono text-[9px] font-bold tabular-nums text-text-muted uppercase">
+                      WR: {((p.wins / (p.matches_played || 1)) * 100).toFixed(0)}%
+                    </span>
+                    <div className="w-12 h-1 bg-surface-border rounded-full overflow-hidden">
+                      <div 
+                        className="bg-accent h-full transition-all" 
+                        style={{ width: `${(p.wins / (p.matches_played || 1)) * 100}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
               </button>
@@ -73,7 +81,7 @@ export function RankingTable({ stats, onOpenCard }: Props) {
 
       {/* Desktop: tabela completa */}
       <div className="hidden overflow-x-auto rounded-lg border border-fs-border bg-fs-surface sm:block">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="sticky top-0 bg-fs-surface text-[10px] uppercase tracking-wider text-fs-text-dim">
             <tr className="border-b border-fs-border">
               <th className="w-10 px-2 py-2 text-center">#</th>
@@ -85,6 +93,7 @@ export function RankingTable({ stats, onOpenCard }: Props) {
               <th className="w-12 px-1 py-2 text-right">Nota</th>
               <th className="w-14 px-2 py-2 text-right">Pts</th>
               <th className="w-10 px-1 py-2 text-right">★</th>
+              <th className="w-20 px-2 py-2 text-right">Win %</th>
               <th
                 className="w-10 px-1 py-2"
                 data-html-to-image-ignore="true"
@@ -96,6 +105,7 @@ export function RankingTable({ stats, onOpenCard }: Props) {
             {stats.map((p, i) => {
               const tier = getCardTier(p.dynamic_rating);
               const rank = i + 1;
+              const winRate = (p.wins / (p.matches_played || 1)) * 100;
               return (
                 <tr
                   key={p.player_id}
@@ -137,6 +147,17 @@ export function RankingTable({ stats, onOpenCard }: Props) {
                   </td>
                   <td className="px-1 py-2 text-right font-semibold text-fs-text">
                     {(p.dynamic_rating ?? 0).toFixed(1)}
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-[10px] font-bold text-text-primary">{winRate.toFixed(0)}%</span>
+                      <div className="w-12 h-1 bg-surface-border rounded-full overflow-hidden">
+                        <div 
+                          className="bg-accent h-full transition-all" 
+                          style={{ width: `${winRate}%` }}
+                        />
+                      </div>
+                    </div>
                   </td>
                   <td className="px-1 py-2 text-right" data-html-to-image-ignore="true">
                     <Button
